@@ -1,0 +1,23 @@
+From ad786eaa8a232795470dbeab2380dc8d8ac803af Mon Sep 17 00:00:00 2001
+From: TJ Saunders <tj@castaglia.org>
+Date: Fri, 27 Oct 2017 09:28:19 -0700
+Subject: [PATCH] Merge pull request #617 from pghmcfc/systemd-network-online
+
+systemd: use network-online.target
+---
+ contrib/dist/rpm/proftpd.service | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/contrib/dist/rpm/proftpd.service b/contrib/dist/rpm/proftpd.service
+index 8a4df33c9..6c81db398 100644
+--- a/contrib/dist/rpm/proftpd.service
++++ b/contrib/dist/rpm/proftpd.service
+@@ -1,6 +1,7 @@
+ [Unit]
+ Description = ProFTPD FTP Server
+-After = network.target nss-lookup.target local-fs.target remote-fs.target
++Wants=network-online.target
++After=network-online.target nss-lookup.target local-fs.target remote-fs.target
+ 
+ [Service]
+ Type = simple

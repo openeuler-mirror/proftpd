@@ -1,0 +1,37 @@
+From 48012e5ab7969fc77d0724769b1e737343ed654d Mon Sep 17 00:00:00 2001
+From: Paul Howarth <paul@city-fan.org>
+Date: Wed, 10 May 2017 10:10:40 +0100
+Subject: [PATCH] Switch to Type = simple and add configuration test
+
+Upstream recommends Type = simple if possible rather than Type = forking:
+http://0pointer.de/public/systemd-man/daemon.html#Integration%20with%20Systemd
+
+Also add configuration test prior to starting the daemon, to help diagnose
+start-up problems.
+---
+ contrib/dist/rpm/proftpd.service | 9 ++++-----
+ 1 file changed, 4 insertions(+), 5 deletions(-)
+
+diff --git a/contrib/dist/rpm/proftpd.service b/contrib/dist/rpm/proftpd.service
+index 07802ca..8a4df33 100644
+--- a/contrib/dist/rpm/proftpd.service
++++ b/contrib/dist/rpm/proftpd.service
+@@ -3,14 +3,13 @@ Description = ProFTPD FTP Server
+ After = network.target nss-lookup.target local-fs.target remote-fs.target
+ 
+ [Service]
+-Type = forking
+-PIDFile = /run/proftpd/proftpd.pid
++Type = simple
+ Environment = PROFTPD_OPTIONS=
+ EnvironmentFile = -/etc/sysconfig/proftpd
+-ExecStart = /usr/sbin/proftpd $PROFTPD_OPTIONS
+-ExecStartPost = /usr/bin/touch /var/lock/subsys/proftpd
+-ExecStopPost = /bin/rm -f /var/lock/subsys/proftpd
++ExecStartPre = /usr/sbin/proftpd --configtest
++ExecStart = /usr/sbin/proftpd --nodaemon $PROFTPD_OPTIONS
+ ExecReload = /bin/kill -HUP $MAINPID
++PIDFile = /run/proftpd/proftpd.pid
+ 
+ [Install]
+ WantedBy = multi-user.target

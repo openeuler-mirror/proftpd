@@ -1,0 +1,25 @@
+From 84549ece3a839161794deee1721fc0cf9bf9eb9c Mon Sep 17 00:00:00 2001
+From: Paul Howarth <paul@city-fan.org>
+Date: Mon, 8 May 2017 10:16:32 +0100
+Subject: [PATCH] Use absolute pathnames for executables in systemd unit files
+
+Otherwise, systemd complains about them and ignores the commands.
+---
+ contrib/dist/rpm/proftpd.service | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/contrib/dist/rpm/proftpd.service b/contrib/dist/rpm/proftpd.service
+index c2fd401..07802ca 100644
+--- a/contrib/dist/rpm/proftpd.service
++++ b/contrib/dist/rpm/proftpd.service
+@@ -8,8 +8,8 @@ PIDFile = /run/proftpd/proftpd.pid
+ Environment = PROFTPD_OPTIONS=
+ EnvironmentFile = -/etc/sysconfig/proftpd
+ ExecStart = /usr/sbin/proftpd $PROFTPD_OPTIONS
+-ExecStartPost = touch /var/lock/subsys/proftpd
+-ExecStopPost = rm -f /var/lock/subsys/proftpd
++ExecStartPost = /usr/bin/touch /var/lock/subsys/proftpd
++ExecStopPost = /bin/rm -f /var/lock/subsys/proftpd
+ ExecReload = /bin/kill -HUP $MAINPID
+ 
+ [Install]

@@ -1,0 +1,31 @@
+From fa378a8f2bc1b24ab93c157495960080aa788299 Mon Sep 17 00:00:00 2001
+From: TJ Saunders <tj@castaglia.org>
+Date: Wed, 8 Aug 2018 11:15:21 -0700
+Subject: [PATCH] Bug#4356: Fix infinite loop by actually iterating properly
+ for the next configuration record.  Oops.
+
+---
+ contrib/mod_sftp/mod_sftp.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/contrib/mod_sftp/mod_sftp.c b/contrib/mod_sftp/mod_sftp.c
+index b7fdfa541..655b12af1 100644
+--- a/contrib/mod_sftp/mod_sftp.c
++++ b/contrib/mod_sftp/mod_sftp.c
+@@ -1,6 +1,6 @@
+ /*
+  * ProFTPD - mod_sftp
+- * Copyright (c) 2008-2017 TJ Saunders
++ * Copyright (c) 2008-2018 TJ Saunders
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License as published by
+@@ -1211,6 +1211,8 @@ MODRET set_sftphostkey(cmd_rec *cmd) {
+           insecure_hostkey_perms = TRUE;
+           break;
+         }
++
++        c = find_config_next(c, c->next, CONF_PARAM, "SFTPOptions", FALSE);
+       }
+ 
+       if (insecure_hostkey_perms) {

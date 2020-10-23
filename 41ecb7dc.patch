@@ -1,0 +1,326 @@
+From 41ecb7dc3932dd57bac52980982c76bf036ccfd8 Mon Sep 17 00:00:00 2001
+From: TJ Saunders <tj@castaglia.org>
+Date: Wed, 12 Jul 2017 23:14:59 -0700
+Subject: [PATCH] Bug#4309: Allow SFTP/SCP logins to succeed properly when
+ "AllowEmptyPasswords off" in effect.
+
+Also ensure that a truly empty SFTP/SCP password IS properly rejected in such
+a configuration.
+---
+ contrib/mod_sftp/auth-password.c              |  41 +++++++-
+ modules/mod_auth.c                            |  55 +++++++----
+ tests/t/lib/ProFTPD/Tests/Modules/mod_sftp.pm | 132 ++++++++++++++++++++++++++
+ 3 files changed, 205 insertions(+), 23 deletions(-)
+
+diff --git a/contrib/mod_sftp/auth-password.c b/contrib/mod_sftp/auth-password.c
+index 2605af7f6..8fb9804bd 100644
+--- a/contrib/mod_sftp/auth-password.c
++++ b/contrib/mod_sftp/auth-password.c
+@@ -1,6 +1,6 @@
+ /*
+  * ProFTPD - mod_sftp 'password' user authentication
+- * Copyright (c) 2008-2015 TJ Saunders
++ * Copyright (c) 2008-2017 TJ Saunders
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License as published by
+@@ -37,6 +37,7 @@ int sftp_auth_password(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
+   char *passwd;
+   int have_new_passwd, res;
+   struct passwd *pw;
++  size_t passwd_len;
+ 
+   cipher_algo = sftp_cipher_get_read_algo();
+   mac_algo = sftp_mac_get_read_algo();
+@@ -77,6 +78,7 @@ int sftp_auth_password(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
+ 
+   passwd = sftp_msg_read_string(pkt->pool, buf, buflen);
+   passwd = sftp_utf8_decode_str(pkt->pool, passwd);
++  passwd_len = strlen(passwd);
+ 
+   pass_cmd->arg = passwd;
+ 
+@@ -92,7 +94,7 @@ int sftp_auth_password(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
+     pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
+     pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
+ 
+-    pr_memscrub(passwd, strlen(passwd));
++    pr_memscrub(passwd, passwd_len);
+ 
+     *send_userauth_fail = TRUE;
+     errno = EPERM;
+@@ -109,15 +111,46 @@ int sftp_auth_password(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
+       session.c->remote_name, pr_netaddr_get_ipstr(session.c->remote_addr),
+       pr_netaddr_get_ipstr(session.c->local_addr), session.c->local_port);
+ 
+-    pr_memscrub(passwd, strlen(passwd));
++    pr_memscrub(passwd, passwd_len);
+ 
+     *send_userauth_fail = TRUE;
+     errno = ENOENT;
+     return 0;
+   }
+ 
++  if (passwd_len == 0) {
++    config_rec *c;
++    int allow_empty_passwords = TRUE;
++
++    c = find_config(main_server->conf, CONF_PARAM, "AllowEmptyPasswords",
++      FALSE);
++    if (c != NULL) {
++      allow_empty_passwords = *((int *) c->argv[0]);
++    }
++
++    if (allow_empty_passwords == FALSE) {
++      pr_log_debug(DEBUG5,
++        "Refusing empty password from user '%s' (AllowEmptyPasswords false)",
++         user);
++      pr_log_auth(PR_LOG_NOTICE,
++        "Refusing empty password from user '%s'", user);
++
++      pr_event_generate("mod_auth.empty-password", user);
++      pr_response_add_err(R_501, "Login incorrect.");
++
++      pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
++      pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
++
++      pr_memscrub(passwd, passwd_len);
++
++      *send_userauth_fail = TRUE;
++      errno = EPERM;
++      return 0;
++    }
++  }
++
+   res = pr_auth_authenticate(pkt->pool, user, passwd);
+-  pr_memscrub(passwd, strlen(passwd));
++  pr_memscrub(passwd, passwd_len);
+ 
+   switch (res) {
+     case PR_AUTH_OK:
+diff --git a/modules/mod_auth.c b/modules/mod_auth.c
+index 2b76070f7..b60cea5a9 100644
+--- a/modules/mod_auth.c
++++ b/modules/mod_auth.c
+@@ -2636,35 +2636,52 @@ MODRET auth_pre_pass(cmd_rec *cmd) {
+ 
+       allow_empty_passwords = *((int *) c->argv[0]);
+       if (allow_empty_passwords == FALSE) {
++        const char *proto;
++        int reject_empty_passwd = FALSE, using_ssh2 = FALSE;
+         size_t passwd_len = 0;
+  
++        proto = pr_session_get_protocol(0);
++        if (strcmp(proto, "ssh2") == 0) {
++          using_ssh2 = TRUE;
++        }
++
+         if (cmd->argc > 1) {
+           if (cmd->arg != NULL) {
+             passwd_len = strlen(cmd->arg);
+           }
+         }
+ 
+-        /* Make sure to NOT enforce 'AllowEmptyPasswords off' if e.g.
+-         * the AllowDotLogin TLSOption is in effect.
+-         */
+-        if (cmd->argc == 1 ||
+-            passwd_len == 0) {
+-
+-          if (session.auth_mech == NULL ||
+-              strcmp(session.auth_mech, "mod_tls.c") != 0) {
+-            pr_log_debug(DEBUG5,
+-              "Refusing empty password from user '%s' (AllowEmptyPasswords "
+-              "false)", user);
+-            pr_log_auth(PR_LOG_NOTICE,
+-              "Refusing empty password from user '%s'", user);
+-
+-            pr_event_generate("mod_auth.empty-password", user);
+-            pr_response_add_err(R_501, _("Login incorrect."));
+-            return PR_ERROR(cmd);
++        if (passwd_len == 0) {
++          reject_empty_passwd = TRUE;
++
++          /* Make sure to NOT enforce 'AllowEmptyPasswords off' if e.g.
++           * the AllowDotLogin TLSOption is in effect, or if the protocol is
++           * SSH2 (for mod_sftp uses "fake" PASS commands for the SSH login
++           * protocol).
++           */
++
++          if (session.auth_mech != NULL &&
++              strcmp(session.auth_mech, "mod_tls.c") == 0) {
++            pr_log_debug(DEBUG9, "%s", "'AllowEmptyPasswords off' in effect, "
++              "BUT client authenticated via the AllowDotLogin TLSOption");
++            reject_empty_passwd = FALSE;
+           }
+ 
+-          pr_log_debug(DEBUG9, "%s", "'AllowEmptyPasswords off' in effect, "
+-            "BUT client authenticated via the AllowDotLogin TLSOption");
++          if (using_ssh2 == TRUE) {
++            reject_empty_passwd = FALSE;
++          }
++        }
++
++        if (reject_empty_passwd == TRUE) {
++          pr_log_debug(DEBUG5,
++            "Refusing empty password from user '%s' (AllowEmptyPasswords "
++            "false)", user);
++          pr_log_auth(PR_LOG_NOTICE,
++            "Refusing empty password from user '%s'", user);
++
++          pr_event_generate("mod_auth.empty-password", user);
++          pr_response_add_err(R_501, _("Login incorrect."));
++          return PR_ERROR(cmd);
+         }
+       }
+     }
+diff --git a/tests/t/lib/ProFTPD/Tests/Modules/mod_sftp.pm b/tests/t/lib/ProFTPD/Tests/Modules/mod_sftp.pm
+index c919844ea..c608e76fc 100644
+--- a/tests/t/lib/ProFTPD/Tests/Modules/mod_sftp.pm
++++ b/tests/t/lib/ProFTPD/Tests/Modules/mod_sftp.pm
+@@ -1279,6 +1279,11 @@ my $TESTS = {
+     test_class => [qw(bug forking sftp ssh2)],
+   },
+ 
++  sftp_config_allow_empty_passwords_off_bug4309 => {
++    order => ++$order,
++    test_class => [qw(bug forking sftp ssh2)],
++  },
++
+   sftp_multi_channels => {
+     order => ++$order,
+     test_class => [qw(forking sftp ssh2)],
+@@ -41885,6 +41890,133 @@ sub sftp_config_insecure_hostkey_perms_bug4098 {
+   test_cleanup($setup->{log_file}, $ex);
+ }
+ 
++sub sftp_config_allow_empty_passwords_off_bug4309 {
++  my $self = shift;
++  my $tmpdir = $self->{tmpdir};
++  my $setup = test_setup($tmpdir, 'sftp');
++
++  my $other_user = 'nopassword';
++  my $other_passwd = '';
++  my $other_uid = 1000;
++  my $other_gid = 1000;
++
++  auth_user_write($setup->{auth_user_file}, $other_user, $other_passwd,
++    $other_uid, $other_gid, $setup->{home_dir}, '/bin/bash');
++  auth_group_write($setup->{auth_group_file}, $setup->{group}, $setup->{gid},
++    $other_user);
++
++  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
++  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
++
++  my $config = {
++    PidFile => $setup->{pid_file},
++    ScoreboardFile => $setup->{scoreboard_file},
++    SystemLog => $setup->{log_file},
++    TraceLog => $setup->{log_file},
++    Trace => 'DEFAULT:10 ssh2:20 sftp:20',
++
++    AuthUserFile => $setup->{auth_user_file},
++    AuthGroupFile => $setup->{auth_group_file},
++
++    IfModules => {
++      'mod_delay.c' => {
++        DelayEngine => 'off',
++      },
++
++      'mod_sftp.c' => [
++        "SFTPEngine on",
++        "SFTPLog $setup->{log_file}",
++        "SFTPHostKey $rsa_host_key",
++        "SFTPHostKey $dsa_host_key",
++        "AllowEmptyPasswords off",
++      ],
++    },
++  };
++
++  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
++    $config);
++
++  # Open pipes, for use between the parent and child processes.  Specifically,
++  # the child will indicate when it's done with its test by writing a message
++  # to the parent.
++  my ($rfh, $wfh);
++  unless (pipe($rfh, $wfh)) {
++    die("Can't open pipe: $!");
++  }
++
++  require Net::SSH2;
++
++  my $ex;
++
++  # Fork child
++  $self->handle_sigchld();
++  defined(my $pid = fork()) or die("Can't fork: $!");
++  if ($pid) {
++    eval {
++      my $ssh2 = Net::SSH2->new();
++
++      sleep(1);
++
++      # First, we'll try to login with normal user/password; this should
++      # succeed.
++      unless ($ssh2->connect('127.0.0.1', $port)) {
++        my ($err_code, $err_name, $err_str) = $ssh2->error();
++        die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
++      }
++
++      unless ($ssh2->auth_password($setup->{user}, $setup->{passwd})) {
++        my ($err_code, $err_name, $err_str) = $ssh2->error();
++        die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
++      }
++
++      my $sftp = $ssh2->sftp();
++      unless ($sftp) {
++        my ($err_code, $err_name, $err_str) = $ssh2->error();
++        die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
++      }
++
++      $sftp = undef;
++      $ssh2->disconnect();
++      $ssh2 = undef;
++
++      # Then, we'll try to login with an empty password; this should fail.
++
++      $ssh2 = Net::SSH2->new();
++      unless ($ssh2->connect('127.0.0.1', $port)) {
++        my ($err_code, $err_name, $err_str) = $ssh2->error();
++        die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
++      }
++
++      if ($ssh2->auth_password($other_user, $other_passwd)) {
++        die("Login with empty password succeeded unexpectedly");
++      }
++
++      $ssh2->disconnect();
++    };
++    if ($@) {
++      $ex = $@;
++    }
++
++    $wfh->print("done\n");
++    $wfh->flush();
++
++  } else {
++    eval { server_wait($setup->{config_file}, $rfh) };
++    if ($@) {
++      warn($@);
++      exit 1;
++    }
++
++    exit 0;
++  }
++
++  # Stop server
++  server_stop($setup->{pid_file});
++  $self->assert_child_ok($pid);
++
++  test_cleanup($setup->{log_file}, $ex);
++}
++
+ sub sftp_multi_channel_downloads {
+   my $self = shift;
+   my $tmpdir = $self->{tmpdir};

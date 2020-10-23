@@ -1,0 +1,4 @@
+version_control: github
+src_repoo: proftpd/protpd
+tag_prefix: "^v"
+separator: "."
