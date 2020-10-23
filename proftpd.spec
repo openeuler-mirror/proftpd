@@ -1,6 +1,6 @@
-%global use_systemd	1
-%global rundir		/run
-%global rundir_tmpfs	1
+%global use_systemd    1
+%global rundir        /run
+%global rundir_tmpfs    1
 %global systemd_units systemd
 %global preset_support 1
 %global mysql_lib mariadb
@@ -12,86 +12,85 @@
 %global mod_vroot_version 0.9.5
 %bcond_with enable_test 0
 
-Name:			proftpd
-Version:		1.3.6
-Release:		1
-Summary:		Flexible, stable and highly-configurable FTP server
-License:		GPLv2+
-URL:			https://github.com/proftpd/proftpd
+Name:           proftpd
+Version:        1.3.6
+Release:        1
+Summary:        Flexible, stable and highly-configurable FTP server
+License:        GPLv2+
+URL:            https://github.com/proftpd/proftpd
 Source0:        https://github.com/proftpd/proftpd/archive/v%{version}.tar.gz
-Source1:		proftpd.conf
-Source5:		proftpd-welcome.msg
-Source9:		proftpd.sysconfig
-Source10:		http://github.com/Castaglia/proftpd-mod_vroot/archive/v%{mod_vroot_version}.tar.gz
-Patch1:			proftpd-1.3.6-shellbang.patch
-Patch2:			proftpd.conf-no-memcached.patch
-Patch3:			proftpd-1.3.4rc1-mod_vroot-test.patch
+Source1:        proftpd.conf
+Source5:        proftpd-welcome.msg
+Source9:        proftpd.sysconfig
+Source10:       http://github.com/Castaglia/proftpd-mod_vroot/archive/v%{mod_vroot_version}.tar.gz
+Patch1:         proftpd-1.3.6-shellbang.patch
+Patch2:         proftpd.conf-no-memcached.patch
+Patch3:         proftpd-1.3.4rc1-mod_vroot-test.patch
 # https://github.com/proftpd/proftpd/commit/459693c7.patch
-Patch100:		459693c7.patch
+Patch100:       459693c7.patch
 # https://github.com/proftpd/proftpd/commit/389cc579.patch
-Patch101:		389cc579.patch
+Patch101:       389cc579.patch
 # https://github.com/proftpd/proftpd/commit/1825a2b8.patch
-Patch102:		1825a2b8.patch
+Patch102:       1825a2b8.patch
 # https://github.com/proftpd/proftpd/commit/73887e02.patch
-Patch103:		73887e02.patch
+Patch103:       73887e02.patch
 # https://github.com/proftpd/proftpd/commit/8a186e2d.patch
-Patch104:		8a186e2d.patch
+Patch104:       8a186e2d.patch
 # https://github.com/proftpd/proftpd/commit/c3e5d75f.patch
-Patch105:		c3e5d75f.patch
-Patch106:		proftpd-1.3.6-add-enable-tests-nonetwork-option.patch
+Patch105:       c3e5d75f.patch
+Patch106:       proftpd-1.3.6-add-enable-tests-nonetwork-option.patch
 # https://github.com/proftpd/proftpd/commit/adfdc01d.patch
-Patch107:		adfdc01d.patch
+Patch107:       adfdc01d.patch
 # https://github.com/proftpd/proftpd/commit/6cc96b5f.patch
-Patch108:		6cc96b5f.patch
+Patch108:       6cc96b5f.patch
 # https://github.com/proftpd/proftpd/commit/aa85f127.patch
-Patch109:		aa85f127.patch
+Patch109:       aa85f127.patch
 # https://github.com/proftpd/proftpd/commit/7907aa65.patch
-Patch110:		7907aa65.patch
+Patch110:       7907aa65.patch
 # https://github.com/proftpd/proftpd/commit/08ba2f63.patch
-Patch111:		08ba2f63.patch
+Patch111:       08ba2f63.patch
 # https://github.com/proftpd/proftpd/commit/757b9633.patch
-Patch112:		757b9633.patch
+Patch112:       757b9633.patch
 # https://github.com/proftpd/proftpd/commit/41ecb7dc.patch
-Patch113:		41ecb7dc.patch
+Patch113:       41ecb7dc.patch
 # https://github.com/proftpd/proftpd/commit/ad786eaa.patch
-Patch114:		ad786eaa.patch
+Patch114:       ad786eaa.patch
 # https://github.com/proftpd/proftpd/commit/a2c02a6b.patch
-Patch115:		a2c02a6b.patch
-Patch116:		proftpd-1.3.6-ENOATTR.patch
+Patch115:       a2c02a6b.patch
+Patch116:       proftpd-1.3.6-ENOATTR.patch
 # https://github.com/proftpd/proftpd/commit/fa378a8f.patch
-Patch117:		fa378a8f.patch
+Patch117:       fa378a8f.patch
 BuildRequires:  coreutils gcc GeoIP-devel gettext libacl-devel libcap-devel
 %if 0%{?have_libmemcached:1}
-BuildRequires:       		libmemcached-devel >= 0.41
+BuildRequires:  libmemcached-devel >= 0.41
 %endif
-BuildRequires:       		%{mysql_devel_pkg} 		ncurses-devel 		openldap-devel 		openssl-devel
-BuildRequires:       		pam-devel 		pcre-devel >= 7.0 		perl-generators
-BuildRequires:       		perl-interpreter
-BuildRequires:       		pkgconfig 		%{postgresql_devel_pkg} 		sqlite-devel 		tar
+BuildRequires:  %{mysql_devel_pkg} ncurses-devel openldap-devel openssl-devel
+BuildRequires:  pam-devel pcre-devel >= 7.0 perl-generators perl-interpreter
+BuildRequires:  pkgconfig %{postgresql_devel_pkg} sqlite-devel tar
 %if 0%{?libwrap_support:1}
-BuildRequires:       		tcp_wrappers-devel
+BuildRequires:  tcp_wrappers-devel
 %endif
-BuildRequires:       		zlib-devel
-BuildRequires:       		check-devel
+BuildRequires:  zlib-devel
+BuildRequires:  check-devel
 %if 0%{?_with_integrationtests:1}
-BuildRequires:      		perl(Compress::Zlib)		perl(Digest::MD5)		perl(HTTP::Request)
-BuildRequires:      		perl(IO::Socket::SSL)		perl(LWP::UserAgent)		perl(Net::FTPSSL)
-BuildRequires:      		perl(Net::SSLeay)		perl(Net::Telnet)		perl(Sys::HostAddr)		perl(Test::Harness)
-BuildRequires:      		perl(Test::Unit) >= 0.25		perl(Time::HiRes)
+BuildRequires:  perl(Compress::Zlib) perl(Digest::MD5) perl(HTTP::Request)
+BuildRequires:  perl(IO::Socket::SSL) perl(LWP::UserAgent) perl(Net::FTPSSL)
+BuildRequires:  perl(Net::SSLeay) perl(Net::Telnet) perl(Sys::HostAddr) perl(Test::Harness)
+BuildRequires:  perl(Test::Unit) >= 0.25 perl(Time::HiRes)
 %endif
 %if %{rundir_tmpfs}
-Requires:            		%{systemd_units}
+Requires:       %{systemd_units}
 %endif
-Requires(preun):	coreutils, findutils
+Requires(preun):coreutils, findutils
 %if %{use_systemd}
-BuildRequires:       		%{systemd_units}
+BuildRequires:  %{systemd_units}
 %{?systemd_requires}
 %else
-Requires(post):		chkconfig
-Requires(preun):	chkconfig, initscripts
-Requires(postun):	initscripts
+Requires(post):  chkconfig
+Requires(preun): chkconfig, initscripts
+Requires(postun):initscripts
 %endif
-Provides:		ftpserver
+Provides:        ftpserver
 %description
 ProFTPD is an enhanced FTP server with a focus toward simplicity, security,
 and ease of configuration. It features a very Apache-like configuration
@@ -106,52 +105,52 @@ This package defaults to the standalone behavior of ProFTPD, but all the
 needed scripts to have it run by xinetd instead are included.
 %endif
 
-%package devel
-Summary:	ProFTPD - Tools and header files for developers
-Requires:            	%{name} = %{version}-%{release} 	gcc, libtool 	GeoIP-devel 	libacl-devel
-Requires:            	libcap-devel
+%package     devel
+Summary:     ProFTPD - Tools and header files for developers
+Requires:    %{name} = %{version}-%{release} gcc libtool GeoIP-devel libacl-devel
+Requires:    libcap-devel
 %if 0%{?have_libmemcached:1}
-Requires:            	libmemcached-devel >= 0.41
+Requires:    libmemcached-devel >= 0.41
 %endif
-Requires:            	%{mysql_devel_pkg} 	ncurses-devel 	openldap-devel 	openssl-devel 	pam-devel
-Requires:            	pcre-devel 	pkgconfig 	%{postgresql_devel_pkg} 	sqlite-devel
+Requires:    %{mysql_devel_pkg} ncurses-devel openldap-devel openssl-devel pam-devel
+Requires:    pcre-devel pkgconfig %{postgresql_devel_pkg} sqlite-devel
 %if 0%{?libwrap_support:1}
-Requires:            	tcp_wrappers-devel
+Requires:    tcp_wrappers-devel
 %endif
-Requires:            	zlib-devel
+Requires:    zlib-devel
 %description devel
 This package is required to build additional modules for ProFTPD.
 
-%package ldap
-Summary:	Module to add LDAP support to the ProFTPD FTP server
-Requires:            	%{name} = %{version}-%{release}
+%package     ldap
+Summary:     Module to add LDAP support to the ProFTPD FTP server
+Requires:    %{name} = %{version}-%{release}
 %description ldap
 Module to add LDAP support to the ProFTPD FTP server.
 
-%package mysql
-Summary:	Module to add MySQL support to the ProFTPD FTP server
-Requires:            	%{name} = %{version}-%{release}
+%package     mysql
+Summary:     Module to add MySQL support to the ProFTPD FTP server
+Requires:    %{name} = %{version}-%{release}
 %description mysql
 Module to add MySQL support to the ProFTPD FTP server.
 
-%package postgresql
-Summary:	Module to add PostgreSQL support to the ProFTPD FTP server
-Requires:            	%{name} = %{version}-%{release}
+%package     postgresql
+Summary:     Module to add PostgreSQL support to the ProFTPD FTP server
+Requires:    %{name} = %{version}-%{release}
 %description postgresql
 Module to add PostgreSQL support to the ProFTPD FTP server.
 
-%package sqlite
-Summary:	Module to add SQLite support to the ProFTPD FTP server
-Requires:            	%{name} = %{version}-%{release}
+%package     sqlite
+Summary:     Module to add SQLite support to the ProFTPD FTP server
+Requires:    %{name} = %{version}-%{release}
 %description sqlite
 Module to add SQLite support to the ProFTPD FTP server.
 
-%package utils
-Summary:	ProFTPD - Additional utilities
-Requires:            	%{name} = %{version}-%{release} 	perl-interpreter
-BuildRequires:      	perl(Crypt::Cracklib)
-Requires:           	perl(Crypt::Cracklib)
-%description utils
+%package      utils
+Summary:      ProFTPD - Additional utilities
+Requires:     %{name} = %{version}-%{release} perl-interpreter
+BuildRequires:perl(Crypt::Cracklib)
+Requires:     perl(Crypt::Cracklib)
+%description  utils
 This package contains additional utilities for monitoring and configuring the
 ProFTPD server:
 * ftpasswd: generate passwd(5) files for use with AuthUserFile
@@ -194,7 +193,7 @@ mv contrib/README contrib/README.contrib
 %patch117 -p1
 %if %{use_systemd}
 sed -i -e '/killall/s/test.*/systemctl reload proftpd.service/' \
-	contrib/dist/rpm/proftpd.logrotate
+    contrib/dist/rpm/proftpd.logrotate
 %endif
 chmod -c -x contrib/xferstats.holger-preiss
 chmod -c -x include/hanson-tpl.h lib/hanson-tpl.c
@@ -208,57 +207,57 @@ SMOD4=mod_radius:mod_ratio:mod_rewrite:mod_site_misc:mod_exec:mod_shaper:mod_geo
 SMOD5=mod_wrap2:mod_wrap2_file:mod_wrap2_sql:mod_copy:mod_deflate:mod_ifversion:mod_qos
 SMOD6=mod_sftp:mod_sftp_pam:mod_sftp_sql:mod_tls_shmcache%{?have_libmemcached::mod_tls_memcache}
 %configure \
-			--libexecdir="%{_libexecdir}/proftpd" \
-			--localstatedir="%{rundir}/proftpd" \
-			--disable-strip \
-			--enable-ctrls \
-			--enable-dso \
-			--enable-facl \
-			--enable-ipv6 \
-%{?have_libmemcached:	--enable-memcache} \
-			--enable-nls \
-			--enable-openssl \
-			--disable-pcre \
-			--disable-redis \
-			--enable-shadow \
-			--enable-tests=nonetwork \
-			--with-libraries="%{_libdir}/%{mysql_lib}" \
-			--with-includes="%{_includedir}/mysql" \
-			--with-modules=mod_readme:mod_auth_pam:mod_tls \
-			--with-shared=${SMOD1}:${SMOD2}:${SMOD3}:${SMOD4}:${SMOD5}:${SMOD6}:mod_ifsession
+            --libexecdir="%{_libexecdir}/proftpd" \
+            --localstatedir="%{rundir}/proftpd" \
+            --disable-strip \
+            --enable-ctrls \
+            --enable-dso \
+            --enable-facl \
+            --enable-ipv6 \
+%{?have_libmemcached:    --enable-memcache} \
+            --enable-nls \
+            --enable-openssl \
+            --disable-pcre \
+            --disable-redis \
+            --enable-shadow \
+            --enable-tests=nonetwork \
+            --with-libraries="%{_libdir}/%{mysql_lib}" \
+            --with-includes="%{_includedir}/mysql" \
+            --with-modules=mod_readme:mod_auth_pam:mod_tls \
+            --with-shared=${SMOD1}:${SMOD2}:${SMOD3}:${SMOD4}:${SMOD5}:${SMOD6}:mod_ifsession
 make %{?_smp_mflags}
 
 %install
 make install DESTDIR=%{buildroot} \
-	rundir="%{rundir}/proftpd" \
-	INSTALL_USER=`id -un` \
-	INSTALL_GROUP=`id -gn`
-install -D -p -m 640 proftpd.conf	%{buildroot}%{_sysconfdir}/proftpd.conf
+    rundir="%{rundir}/proftpd" \
+    INSTALL_USER=`id -un` \
+    INSTALL_GROUP=`id -gn`
+install -D -p -m 640 proftpd.conf    %{buildroot}%{_sysconfdir}/proftpd.conf
 install -D -p -m 644 contrib/dist/rpm/proftpd.pam \
-					%{buildroot}%{_sysconfdir}/pam.d/proftpd
+                    %{buildroot}%{_sysconfdir}/pam.d/proftpd
 %if %{use_systemd}
 install -D -p -m 644 contrib/dist/rpm/proftpd.service \
-					%{buildroot}%{_unitdir}/proftpd.service
+                    %{buildroot}%{_unitdir}/proftpd.service
 install -D -p -m 644 contrib/dist/systemd/proftpd.socket \
-					%{buildroot}%{_unitdir}/proftpd.socket
+                    %{buildroot}%{_unitdir}/proftpd.socket
 install -D -p -m 644 contrib/dist/systemd/proftpd@.service \
-					%{buildroot}%{_unitdir}/proftpd@.service
+                    %{buildroot}%{_unitdir}/proftpd@.service
 %else
 install -D -p -m 755 contrib/dist/rpm/proftpd.init.d \
-					%{buildroot}%{_sysconfdir}/rc.d/init.d/proftpd
+                    %{buildroot}%{_sysconfdir}/rc.d/init.d/proftpd
 install -D -p -m 644 contrib/dist/rpm/xinetd \
-					%{buildroot}%{_sysconfdir}/xinetd.d/xproftpd
+                    %{buildroot}%{_sysconfdir}/xinetd.d/xproftpd
 %endif
 install -D -p -m 644 contrib/dist/rpm/proftpd.logrotate \
-					%{buildroot}%{_sysconfdir}/logrotate.d/proftpd
-install -D -p -m 644 %{SOURCE5}		%{buildroot}%{_localstatedir}/ftp/welcome.msg
-install -D -p -m 644 %{SOURCE9}		%{buildroot}%{_sysconfdir}/sysconfig/proftpd
+                    %{buildroot}%{_sysconfdir}/logrotate.d/proftpd
+install -D -p -m 644 %{SOURCE5}        %{buildroot}%{_localstatedir}/ftp/welcome.msg
+install -D -p -m 644 %{SOURCE9}        %{buildroot}%{_sysconfdir}/sysconfig/proftpd
 mkdir -p %{buildroot}%{_localstatedir}/{ftp/{pub,uploads},log/proftpd}
 touch %{buildroot}%{_sysconfdir}/ftpusers
 %if %{rundir_tmpfs}
 install -d -m 755 %{buildroot}%{_prefix}/lib/tmpfiles.d
 install -p -m 644 contrib/dist/rpm/proftpd-tmpfs.conf \
-					%{buildroot}%{_prefix}/lib/tmpfiles.d/proftpd.conf
+                    %{buildroot}%{_prefix}/lib/tmpfiles.d/proftpd.conf
 %endif
 %find_lang proftpd
 
@@ -269,11 +268,11 @@ ln ftpdctl tests/
 make check
 %else
 if ! make -C tests api-tests; then
-	# Diagnostics to report upstream
-	cat tests/api-tests.log
-	./proftpd -V
-	# Fail the build
-	false
+    # Diagnostics to report upstream
+    cat tests/api-tests.log
+    ./proftpd -V
+    # Fail the build
+    false
 fi
 %endif
 %endif
@@ -283,33 +282,33 @@ fi
 systemctl daemon-reload &>/dev/null || :
 %endif
 if [ $1 -eq 1 ]; then
-	# Initial installation
+    # Initial installation
 %if ! %{use_systemd}
-	chkconfig --add proftpd || :
+    chkconfig --add proftpd || :
 %endif
 %if %{preset_support}
-	systemctl preset proftpd.service &>/dev/null || :
+    systemctl preset proftpd.service &>/dev/null || :
 %endif
-	IFS=":"; cat /etc/passwd | \
-	while { read username nu nu gid nu nu nu nu; }; do \
-		if [ $gid -lt 100 -a "$username" != "ftp" ]; then
-			echo $username >> %{_sysconfdir}/ftpusers
-		fi
-	done
+    IFS=":"; cat /etc/passwd | \
+    while { read username nu nu gid nu nu nu nu; }; do \
+        if [ $gid -lt 100 -a "$username" != "ftp" ]; then
+            echo $username >> %{_sysconfdir}/ftpusers
+        fi
+    done
 fi
 
 %preun
 if [ $1 -eq 0 ]; then
-	# Package removal, not upgrade
+    # Package removal, not upgrade
 %if %{use_systemd}
-	systemctl --no-reload disable proftpd.service &>/dev/null || :
-	systemctl stop proftpd.service &>/dev/null || :
+    systemctl --no-reload disable proftpd.service &>/dev/null || :
+    systemctl stop proftpd.service &>/dev/null || :
 %else
-	service proftpd stop &>/dev/null || :
-	chkconfig --del proftpd || :
+    service proftpd stop &>/dev/null || :
+    chkconfig --del proftpd || :
 %endif
-	find %{rundir}/proftpd -depth -mindepth 1 |
-		xargs rm -rf &>/dev/null || :
+    find %{rundir}/proftpd -depth -mindepth 1 |
+        xargs rm -rf &>/dev/null || :
 fi
 
 %postun
@@ -317,14 +316,14 @@ fi
 systemctl daemon-reload &>/dev/null || :
 %endif
 if [ $1 -ge 1 ]; then
-	# Package upgrade, not uninstall
+    # Package upgrade, not uninstall
 %if %{use_systemd}
-	systemctl try-restart proftpd.service &>/dev/null || :
+    systemctl try-restart proftpd.service &>/dev/null || :
 %else
-	service proftpd condrestart &>/dev/null || :
+    service proftpd condrestart &>/dev/null || :
 else
-	# Package removal, not upgrade
-	service xinetd reload &>/dev/null || :
+    # Package removal, not upgrade
+    service xinetd reload &>/dev/null || :
 %endif
 fi
 
