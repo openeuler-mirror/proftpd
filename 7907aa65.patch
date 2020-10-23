@@ -1,0 +1,47 @@
+From 925ee5b8f636ab2fd5a3e02af79ba49f54a85b8d Mon Sep 17 00:00:00 2001
+From: Paul Howarth <paul@city-fan.org>
+Date: Fri, 5 May 2017 15:38:59 +0100
+Subject: [PATCH] Don't touch TLSCipherSuite when using system profiles
+
+Fedora and possibly other Linux distributions support system-wide
+crypto policies to enable sane defaults to be specified in an ever
+changing world of different cipher recommendations. In order to use
+such a policy, OpenSSL users just set their cipher selection to
+"PROFILE=SYSTEM", and the system-wide policy will be selected
+(which can itself be set to various values, for best compatibility,
+best strength, a compromise of the two, etc.).
+
+See:
+https://fedoraproject.org/wiki/Packaging:CryptoPolicies
+https://fedoraproject.org/wiki/Changes/CryptoPolicy
+
+The "PROFILE=SYSTEM" string cannot be used in conjunction with other
+cipher selections, so prepending it with "!EXPORT:" results in:
+
+mod_tls/2.7[xxxxx]: unable to accept TLS connection: client does not support
+any cipher from 'TLSCipherSuite !EXPORT:PROFILE=SYSTEM' (see `openssl ciphers
+!EXPORT:PROFILE=SYSTEM` for full list)
+
+Hence, do not touch the supplied TLSCipherSuite if it starts with "PROFILE=".
+---
+ contrib/mod_tls.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/contrib/mod_tls.c b/contrib/mod_tls.c
+index 3ff8ee2..c38ecac 100644
+--- a/contrib/mod_tls.c
++++ b/contrib/mod_tls.c
+@@ -11985,7 +11985,12 @@ MODRET set_tlsciphersuite(cmd_rec *cmd) {
+   c = add_config_param(cmd->argv[0], 1, NULL);
+ 
+   /* Make sure that EXPORT ciphers cannot be used, per Bug#4163. */
+-  ciphersuite = pstrcat(c->pool, "!EXPORT:", ciphersuite, NULL);
++  /* This breaks system profiles though, so don't change them.   */
++  if (strncmp(ciphersuite, "PROFILE=", 8) == 0) {
++    ciphersuite = pstrdup(c->pool, ciphersuite);
++  } else {
++    ciphersuite = pstrcat(c->pool, "!EXPORT:", ciphersuite, NULL);
++  }
+ 
+   /* Check that our construct ciphersuite is acceptable. */
+   ctx = SSL_CTX_new(SSLv23_server_method());

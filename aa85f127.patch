@@ -1,0 +1,159 @@
+From aa85f127d31346a28c619ee426090f1f23fd2249 Mon Sep 17 00:00:00 2001
+From: TJ Saunders <tj@castaglia.org>
+Date: Fri, 5 May 2017 09:24:10 -0700
+Subject: [PATCH] Improve detection of badly configured ciphersuites (e.g.
+ unsupported/misspelled cipher suites) at startup time.
+
+---
+ contrib/mod_tls.c                            | 21 +++++++++++-
+ doc/contrib/mod_tls.html                     | 21 +++++++++++-
+ tests/t/lib/ProFTPD/Tests/Modules/mod_tls.pm | 50 ++++++++++++++++++++++++++++
+ 3 files changed, 90 insertions(+), 2 deletions(-)
+
+diff --git a/contrib/mod_tls.c b/contrib/mod_tls.c
+index 7a2a74f..3ff8ee2 100644
+--- a/contrib/mod_tls.c
++++ b/contrib/mod_tls.c
+@@ -11976,6 +11976,7 @@ MODRET set_tlscertchain(cmd_rec *cmd) {
+ MODRET set_tlsciphersuite(cmd_rec *cmd) {
+   config_rec *c = NULL;
+   char *ciphersuite = NULL;
++  SSL_CTX *ctx;
+ 
+   CHECK_ARGS(cmd, 1);
+   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+@@ -11984,8 +11985,26 @@ MODRET set_tlsciphersuite(cmd_rec *cmd) {
+   c = add_config_param(cmd->argv[0], 1, NULL);
+ 
+   /* Make sure that EXPORT ciphers cannot be used, per Bug#4163. */
+-  c->argv[0] = pstrcat(c->pool, "!EXPORT:", ciphersuite, NULL);
++  ciphersuite = pstrcat(c->pool, "!EXPORT:", ciphersuite, NULL);
++
++  /* Check that our construct ciphersuite is acceptable. */
++  ctx = SSL_CTX_new(SSLv23_server_method());
++  if (ctx != NULL) {
++    if (SSL_CTX_set_cipher_list(ctx, ciphersuite) != 1) {
++      /* Note: tls_get_errors() relies on session.pool, so temporarily set
++       * it to our temporary pool.
++       */
++      session.pool = cmd->tmp_pool;
++
++      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
++        "unable to use configured TLSCipherSuite '", ciphersuite, "': ",
++        tls_get_errors(), NULL));
++    }
++
++    SSL_CTX_free(ctx);
++  }
+ 
++  c->argv[0] = ciphersuite;
+   return PR_HANDLED(cmd);
+ }
+ 
+diff --git a/doc/contrib/mod_tls.html b/doc/contrib/mod_tls.html
+index c1d3f2d..cc88946 100644
+--- a/doc/contrib/mod_tls.html
++++ b/doc/contrib/mod_tls.html
+@@ -295,7 +295,13 @@
+ <strong>Compatibility:</strong> 1.2.7rc1 and later
+ 
+ <p>
+-Default cipher list is &quot;DEFAULT:!ADH:!EXPORT:!DES&quot;.
++Sets the list of SSL/TLS ciphersuites for use.  Default cipher list is
++&quot;DEFAULT:!ADH:!EXPORT:!DES&quot;.
++
++<p>
++<b>Note</b> that <code>mod_tls</code> will automatically <i>prepend</i> the
++configured <em>cipher-list</em> with "!EXPORT", in order to <i>prevent</i> the
++use of the insecure "export grade" ciphers.
+ 
+ <p>
+ How to put together a <em>cipher list</em> parameter:
+@@ -2215,6 +2221,19 @@
+   TLSDHParamFile /path/to/dh1024.pem
+ </pre>
+ 
++<p><a name="TLSNoCipherMatch">
++<font color=red>Question</font>: I tried to configure a specific ciphersuite
++using <code>TLSCipherSuite</code>, but ProFTPD fails on startup with this error:
++<pre>
++  fatal: TLSCipherSuite: unable to use configured TLSCipherSuite '!EXPORT:MYCIPHER':
++  (1) error:1410D0B9:SSL routines:SSL_CTX_set_cipher_list:no cipher match on line 16 of '/etc/proftpd/tls.conf'
++</pre>
++<font color=blue>Answer</font>: This error indicates that the version of OpenSSL
++does not recognize/support one of the ciphers that you configured in your
++<code>TLSCipherSuite</code> list.  Unfortunately the OpenSSL error reporting
++does not pinpoint <i>which</i> is the offending ciphersuite; experimenting
++with your cipher list will reveal which ones are problematic.
++
+ <p>
+ <hr>
+ <h2><a name="Installation">Installation</a></h2>
+diff --git a/tests/t/lib/ProFTPD/Tests/Modules/mod_tls.pm b/tests/t/lib/ProFTPD/Tests/Modules/mod_tls.pm
+index f7cd171..226d47c 100644
+--- a/tests/t/lib/ProFTPD/Tests/Modules/mod_tls.pm
++++ b/tests/t/lib/ProFTPD/Tests/Modules/mod_tls.pm
+@@ -299,6 +299,11 @@ my $TESTS = {
+     test_class => [qw(bug forking)],
+   },
+ 
++  tls_config_tlsciphersuite_bad_cipher => {
++    order => ++$order,
++    test_class => [qw(forking)],
++  },
++
+   tls_session_cache_off_bug3869 => {
+     order => ++$order,
+     test_class => [qw(bug forking)],
+@@ -8983,6 +8988,51 @@ sub tls_config_tlsdhparamfile_bug3868 {
+   unlink($log_file);
+ }
+ 
++sub tls_config_tlsciphersuite_bad_cipher {
++  my $self = shift;
++  my $tmpdir = $self->{tmpdir};
++  my $setup = test_setup($tmpdir, 'tls');
++
++  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
++  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
++
++  my $config = {
++    PidFile => $setup->{pid_file},
++    ScoreboardFile => $setup->{scoreboard_file},
++    SystemLog => $setup->{log_file},
++
++    IfModules => {
++      'mod_delay.c' => {
++        DelayEngine => 'off',
++      },
++
++      'mod_tls.c' => {
++        TLSEngine => 'on',
++        TLSLog => $setup->{log_file},
++        TLSRSACertificateFile => $cert_file,
++        TLSCACertificateFile => $ca_file,
++        TLSCipherSuite => 'FOOBAR',
++      },
++    },
++  };
++
++  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
++    $config);
++
++  my $ex;
++
++  # This should silently fail.
++  server_start($setup->{config_file});
++
++  # This is where we detect the actual problem.
++  eval { server_stop($setup->{pid_file}) };
++  unless ($@) {
++    $ex = "Server start with bad config unexpectedly";
++  }
++
++  test_cleanup($setup->{log_file}, $ex);
++}
++
+ sub tls_session_cache_off_bug3869 {
+   my $self = shift;
+   my $tmpdir = $self->{tmpdir};

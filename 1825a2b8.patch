@@ -1,0 +1,23 @@
+From ee528a5c6513932c6dbe7cf69fdcda3fbf009621 Mon Sep 17 00:00:00 2001
+From: Paul Howarth <paul@city-fan.org>
+Date: Wed, 19 Apr 2017 15:23:30 +0100
+Subject: [PATCH] fsio: fix test in xattr-copying loop
+
+Fixes segfaults in fsio file copying tests (Issue #483)
+---
+ src/fsio.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/fsio.c b/src/fsio.c
+index a54c64d..91ad0d7 100644
+--- a/src/fsio.c
++++ b/src/fsio.c
+@@ -2063,7 +2063,7 @@ int pr_fs_copy_file2(const char *src, const char *dst, int flags,
+     const char **names;
+ 
+     names = xattrs->elts;
+-    for (i = 0; xattrs->nelts; i++) {
++    for (i = 0; i < xattrs->nelts; i++) {
+       ssize_t valsz;
+ 
+       /* First, find out how much memory we need for this attribute's

@@ -1,0 +1,187 @@
+From 49ef73f7193242eac07de27c2e853d9e805162ec Mon Sep 17 00:00:00 2001
+From: Paul Howarth <paul@city-fan.org>
+Date: Wed, 3 May 2017 11:57:23 +0100
+Subject: [PATCH] Add --enable-tests=nonetwork option
+
+This disables API tests that involve resolving/connecting to external
+network services such as Google, which may not be possible in some
+build environments.
+
+Tested using systemd-nspawn --private-network
+---
+ config.h.in         | 3 +++
+ configure.in        | 5 ++++-
+ tests/api/inet.c    | 6 ++++++
+ tests/api/netaddr.c | 6 ++++++
+ 4 files changed, 19 insertions(+), 1 deletion(-)
+
+diff --git a/config.h.in b/config.h.in
+index a38734a..229c9db 100644
+--- a/config.h.in
++++ b/config.h.in
+@@ -1068,6 +1068,9 @@
+ /* Define if ncursesw support, if available, should be used.  */
+ #undef PR_USE_NCURSESW
+ 
++/* Define if non-local network tests are enabled. */
++#undef PR_USE_NETWORK_TESTS
++
+ /* Define if using nonblocking open of log files.  */
+ #undef PR_USE_NONBLOCKING_LOG_OPEN
+ 
+diff --git a/configure.in b/configure.in
+index 1e39c37..dba39ba 100644
+--- a/configure.in
++++ b/configure.in
+@@ -985,7 +985,7 @@ AC_ARG_ENABLE(tests,
+     [--enable-tests],
+     [enable unit tests (default=no)])
+   ],
+-  [ if test x"$enableval" = x"yes" ; then
++  [ if test x"$enableval" = x"yes" || test  x"$enableval" = x"nonetwork" ; then
+       AC_CHECK_HEADERS(check.h)
+ 
+       AC_CHECK_LIB(check, tcase_create,
+@@ -997,6 +997,9 @@ AC_ARG_ENABLE(tests,
+          AC_MSG_ERROR([libcheck support, required for tests, not present -- aborting])
+         ]
+       )
++      if test  x"$enableval" != x"nonetwork" ; then
++        AC_DEFINE(PR_USE_NETWORK_TESTS, 1, [Define if non-local network tests are enabled.])
++      fi
+     fi
+   ])
+ 
+diff -up a/configure b/configure
+--- a/configure
++++ b/configure
+@@ -20423,7 +20423,7 @@ fi
+ ENABLE_TESTS="\"\""
+ # Check whether --enable-tests was given.
+ if test "${enable_tests+set}" = set; then
+-  enableval=$enable_tests;  if test x"$enableval" = x"yes" ; then
++  enableval=$enable_tests;  if test x"$enableval" = x"yes" || test  x"$enableval" = x"nonetwork" ; then
+ 
+ for ac_header in check.h
+ do
+@@ -20648,6 +20648,13 @@ echo "$as_me: error: libcheck support, r
+ 
+ fi
+ 
++      if test  x"$enableval" != x"nonetwork" ; then
++
++cat >>confdefs.h <<\_ACEOF
++#define PR_USE_NETWORK_TESTS 1
++_ACEOF
++
++      fi
+     fi
+ 
+ fi
+diff --git a/tests/api/inet.c b/tests/api/inet.c
+index 03c4781..c111629 100644
+--- a/tests/api/inet.c
++++ b/tests/api/inet.c
+@@ -522,6 +522,7 @@ START_TEST (inet_connect_ipv4_test) {
+   fail_unless(errno == ECONNREFUSED, "Expected ECONNREFUSED (%d), got %s (%d)",
+     ECONNREFUSED, strerror(errno), errno);
+ 
++#if defined(PR_USE_NETWORK_TESTS)
+   /* Try connecting to Google's DNS server. */
+ 
+   addr = pr_netaddr_get_addr(p, "8.8.8.8", NULL);
+@@ -551,6 +552,7 @@ START_TEST (inet_connect_ipv4_test) {
+   fail_unless(errno == EISCONN, "Expected EISCONN (%d), got %s (%d)",
+     EISCONN, strerror(errno), errno);
+   pr_inet_close(p, conn);
++#endif
+ }
+ END_TEST
+ 
+@@ -579,6 +581,7 @@ START_TEST (inet_connect_ipv6_test) {
+     "Expected ECONNREFUSED (%d), ENETUNREACH (%d), or EADDRNOTAVAIL (%d), got %s (%d)",
+     ECONNREFUSED, ENETUNREACH, EADDRNOTAVAIL, strerror(errno), errno);
+ 
++#if defined(PR_USE_NETWORK_TESTS)
+   /* Try connecting to Google's DNS server. */
+ 
+   addr = pr_netaddr_get_addr(p, "2001:4860:4860::8888", NULL);
+@@ -614,6 +617,7 @@ START_TEST (inet_connect_ipv6_test) {
+   fail_unless(errno == EISCONN || errno == EHOSTUNREACH || errno == ENETUNREACH || errno == EADDRNOTAVAIL,
+     "Expected EISCONN (%d) or EHOSTUNREACH (%d) or ENETUNREACH (%d) or EADDRNOTAVAIL (%d), got %s (%d)", EISCONN, EHOSTUNREACH, ENETUNREACH, EADDRNOTAVAIL, strerror(errno), errno);
+   pr_inet_close(p, conn);
++#endif
+ 
+   pr_inet_set_default_family(p, AF_INET);
+ 
+@@ -649,6 +653,7 @@ START_TEST (inet_connect_nowait_test) {
+   res = pr_inet_connect_nowait(p, conn, addr, 180);
+   fail_unless(res != -1, "Connected to 127.0.0.1#180 unexpectedly");
+ 
++#if defined(PR_USE_NETWORK_TESTS)
+   /* Try connecting to Google's DNS server. */
+ 
+   addr = pr_netaddr_get_addr(p, "8.8.8.8", NULL);
+@@ -664,6 +669,7 @@ START_TEST (inet_connect_nowait_test) {
+   }
+ 
+   pr_inet_close(p, conn);
++#endif
+ 
+   /* Restore the default family to AF_INET, for other tests. */
+   pr_inet_set_default_family(p, AF_INET);
+diff --git a/tests/api/netaddr.c b/tests/api/netaddr.c
+index 80d3327..124dc39 100644
+--- a/tests/api/netaddr.c
++++ b/tests/api/netaddr.c
+@@ -146,6 +146,7 @@ START_TEST (netaddr_get_addr_test) {
+   fail_unless(res->na_family == AF_INET, "Expected family %d, got %d",
+     AF_INET, res->na_family);
+ 
++#if defined(PR_USE_NETWORK_TESTS)
+   /* Google: the Dial Tone of the Internet. */
+   name = "www.google.com";
+ 
+@@ -161,6 +162,7 @@ START_TEST (netaddr_get_addr_test) {
+     strerror(errno));
+   fail_unless(res->na_family == AF_INET, "Expected family %d, got %d",
+     AF_INET, res->na_family);
++#endif
+ 
+   name = "127.0.0.1";
+ 
+@@ -903,6 +905,7 @@ START_TEST (netaddr_get_dnsstr_list_test) {
+ 
+   pr_netaddr_clear_cache();
+ 
++#if defined(PR_USE_NETWORK_TESTS)
+   addr = pr_netaddr_get_addr(p, "www.google.com", &addrs);
+   fail_unless(addr != NULL, "Failed to resolve 'www.google.com': %s",
+     strerror(errno));
+@@ -921,6 +924,7 @@ START_TEST (netaddr_get_dnsstr_list_test) {
+   /* Ideally we would check that res->nelts > 0, BUT this turns out to
+    * a fragile test condition, dependent on DNS vagaries.
+    */
++#endif
+ 
+   pr_netaddr_set_reverse_dns(reverse_dns);
+ }
+@@ -1082,6 +1086,7 @@ START_TEST (netaddr_is_loopback_test) {
+   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+     strerror(errno), errno);
+ 
++#if defined(PR_USE_NETWORK_TESTS)
+   name = "www.google.com";
+   addr = pr_netaddr_get_addr(p, name, NULL);
+   fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
+@@ -1089,6 +1094,7 @@ START_TEST (netaddr_is_loopback_test) {
+ 
+   res = pr_netaddr_is_loopback(addr);
+   fail_unless(res == FALSE, "Expected FALSE, got %d", res);
++#endif
+ 
+   name = "127.0.0.1";
+   addr = pr_netaddr_get_addr(p, name, NULL);
+-- 
+2.9.3
+

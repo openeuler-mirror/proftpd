@@ -1,0 +1,206 @@
+From 389cc579bc8d5704f9dcc2fd01ffd6307aee6b2b Mon Sep 17 00:00:00 2001
+From: TJ Saunders <tj@castaglia.org>
+Date: Mon, 17 Apr 2017 20:01:47 -0700
+Subject: [PATCH] Address some nits in the unit tests, to help make more
+ repeatable builds on the variety of testing platforms; addresses Issue #483.
+
+---
+ tests/api/data.c |  5 +++--
+ tests/api/fsio.c | 28 ++++++++++++++++++++--------
+ tests/api/inet.c | 19 ++++++++++---------
+ tests/api/pool.c |  7 ++++++-
+ 4 files changed, 39 insertions(+), 20 deletions(-)
+
+diff --git a/tests/api/data.c b/tests/api/data.c
+index e4442ab..223a3af 100644
+--- a/tests/api/data.c
++++ b/tests/api/data.c
+@@ -313,8 +313,9 @@ START_TEST (data_sendfile_test) {
+   mark_point();
+   res = pr_data_sendfile(fd, &offset, strlen(text));
+   if (res < 0) {
+-    fail_unless(errno == ENOTSOCK, "Expected ENOTSOCK (%d), got %s (%d)",
+-      ENOTSOCK, strerror(errno), errno);
++    fail_unless(errno == ENOTSOCK || errno == EINVAL,
++     "Expected ENOTSOCK (%d) or EINVAL (%d), got %s (%d)", ENOTSOCK, EINVAL,
++     strerror(errno), errno);
+   }
+ 
+   (void) close(fd);
+diff --git a/tests/api/fsio.c b/tests/api/fsio.c
+index 508ca46..4677d8f 100644
+--- a/tests/api/fsio.c
++++ b/tests/api/fsio.c
+@@ -34,6 +34,8 @@ static const char *fsio_test2_path = "/tmp/prt-foo.bar.baz.quxx.quzz";
+ static const char *fsio_unlink_path = "/tmp/prt-fsio-link.dat";
+ static const char *fsio_link_path = "/tmp/prt-fsio-symlink.lnk";
+ static const char *fsio_testdir_path = "/tmp/prt-fsio-test.d";
++static const char *fsio_copy_src_path = "/tmp/prt-fs-src.dat";
++static const char *fsio_copy_dst_path = "/tmp/prt-fs-dst.dat";
+ 
+ /* Fixtures */
+ 
+@@ -1010,8 +1012,12 @@ START_TEST (fsio_sys_access_dir_test) {
+     strerror(errno));
+ 
+   if (getenv("TRAVIS") == NULL) {
+-    uid_t other_uid = 1000;
+-    gid_t other_gid = 1000;
++    uid_t other_uid;
++    gid_t other_gid;
++
++    /* Deliberately use IDs other than the current ones. */
++    other_uid = uid - 1;
++    other_gid = gid - 1;
+ 
+     /* Next, check that others can access the directory. */
+     pr_fs_clear_cache2(fsio_testdir_path);
+@@ -3297,7 +3303,7 @@ END_TEST
+ 
+ START_TEST (fs_copy_file_test) {
+   int res;
+-  char *src_path, *dst_path, *text;
++  char *src_path = NULL, *dst_path = NULL, *text;
+   pr_fh_t *fh;
+ 
+   res = pr_fs_copy_file(NULL, NULL);
+@@ -3305,15 +3311,15 @@ START_TEST (fs_copy_file_test) {
+   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+     strerror(errno), errno);
+ 
+-  src_path = "/tmp/prt-fs-src.dat";
++  src_path = fsio_copy_src_path;
+   res = pr_fs_copy_file(src_path, NULL);
+   fail_unless(res < 0, "Failed to handle null destination path");
+   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+     strerror(errno), errno);
+ 
+-  dst_path = "/tmp/prt-fs-dst.dat";
++  dst_path = fsio_copy_dst_path;
+   res = pr_fs_copy_file(src_path, dst_path);
+-  fail_unless(res < 0, "Failed to handle null destination path");
++  fail_unless(res < 0, "Failed to handle nonexistent source path");
+   fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+     strerror(errno), errno);
+ 
+@@ -3322,6 +3328,7 @@ START_TEST (fs_copy_file_test) {
+   fail_unless(errno == EISDIR, "Expected EISDIR (%d), got %s (%d)", EISDIR,
+     strerror(errno), errno);
+ 
++  (void) unlink(src_path);
+   fh = pr_fsio_open(src_path, O_CREAT|O_EXCL|O_WRONLY);
+   fail_unless(fh != NULL, "Failed to open '%s': %s", src_path, strerror(errno));
+ 
+@@ -3347,6 +3354,8 @@ START_TEST (fs_copy_file_test) {
+   res = pr_fs_copy_file(src_path, src_path);
+   fail_unless(res == 0, "Failed to copy file to itself: %s", strerror(errno));
+ 
++  (void) unlink(dst_path);
++
+   mark_point();
+   res = pr_fs_copy_file(src_path, dst_path);
+   fail_unless(res == 0, "Failed to copy file: %s", strerror(errno));
+@@ -3366,10 +3375,13 @@ START_TEST (fs_copy_file2_test) {
+   char *src_path, *dst_path, *text;
+   pr_fh_t *fh;
+ 
+-  src_path = "/tmp/prt-fs-src.dat";
+-  dst_path = "/tmp/prt-fs-dst.dat";
++  src_path = fsio_copy_src_path;
++  dst_path = fsio_copy_dst_path;
+   flags = PR_FSIO_COPY_FILE_FL_NO_DELETE_ON_FAILURE;
+ 
++  (void) unlink(src_path);
++  (void) unlink(dst_path);
++
+   fh = pr_fsio_open(src_path, O_CREAT|O_EXCL|O_WRONLY);
+   fail_unless(fh != NULL, "Failed to open '%s': %s", src_path, strerror(errno));
+ 
+diff --git a/tests/api/inet.c b/tests/api/inet.c
+index b75c839..03c4781 100644
+--- a/tests/api/inet.c
++++ b/tests/api/inet.c
+@@ -508,7 +508,7 @@ START_TEST (inet_connect_ipv4_test) {
+   conn = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
+   fail_unless(conn != NULL, "Failed to create conn: %s", strerror(errno));
+ 
+-  res = pr_inet_connect(p, conn, NULL, 80);
++  res = pr_inet_connect(p, conn, NULL, 180);
+   fail_unless(res < 0, "Failed to handle null address");
+   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+     strerror(errno), errno);
+@@ -517,8 +517,8 @@ START_TEST (inet_connect_ipv4_test) {
+   fail_unless(addr != NULL, "Failed to resolve '127.0.0.1': %s",
+     strerror(errno));
+ 
+-  res = pr_inet_connect(p, conn, addr, 80);
+-  fail_unless(res < 0, "Connected to 127.0.0.1#80 unexpectedly");
++  res = pr_inet_connect(p, conn, addr, 180);
++  fail_unless(res < 0, "Connected to 127.0.0.1#180 unexpectedly");
+   fail_unless(errno == ECONNREFUSED, "Expected ECONNREFUSED (%d), got %s (%d)",
+     ECONNREFUSED, strerror(errno), errno);
+ 
+@@ -573,8 +573,8 @@ START_TEST (inet_connect_ipv6_test) {
+   fail_unless(addr != NULL, "Failed to resolve '::1': %s",
+     strerror(errno));
+ 
+-  res = pr_inet_connect(p, conn, addr, 80);
+-  fail_unless(res < 0, "Connected to ::1#80 unexpectedly");
++  res = pr_inet_connect(p, conn, addr, 180);
++  fail_unless(res < 0, "Connected to ::1#180 unexpectedly");
+   fail_unless(errno == ECONNREFUSED || errno == ENETUNREACH || errno == EADDRNOTAVAIL,
+     "Expected ECONNREFUSED (%d), ENETUNREACH (%d), or EADDRNOTAVAIL (%d), got %s (%d)",
+     ECONNREFUSED, ENETUNREACH, EADDRNOTAVAIL, strerror(errno), errno);
+@@ -637,7 +637,7 @@ START_TEST (inet_connect_nowait_test) {
+   conn = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
+   fail_unless(conn != NULL, "Failed to create conn: %s", strerror(errno));
+ 
+-  res = pr_inet_connect_nowait(p, conn, NULL, 80);
++  res = pr_inet_connect_nowait(p, conn, NULL, 180);
+   fail_unless(res < 0, "Failed to handle null address");
+   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+     strerror(errno), errno);
+@@ -646,8 +646,8 @@ START_TEST (inet_connect_nowait_test) {
+   fail_unless(addr != NULL, "Failed to resolve '127.0.0.1': %s",
+     strerror(errno));
+ 
+-  res = pr_inet_connect_nowait(p, conn, addr, 80);
+-  fail_unless(res != -1, "Connected to 127.0.0.1#80 unexpectedly");
++  res = pr_inet_connect_nowait(p, conn, addr, 180);
++  fail_unless(res != -1, "Connected to 127.0.0.1#180 unexpectedly");
+ 
+   /* Try connecting to Google's DNS server. */
+ 
+@@ -657,7 +657,8 @@ START_TEST (inet_connect_nowait_test) {
+ 
+   res = pr_inet_connect_nowait(p, conn, addr, 53);
+   if (res < 0 &&
+-      errno != ECONNREFUSED) {
++      errno != ECONNREFUSED &&
++      errno != EBADF) {
+     fail_unless(res != -1, "Failed to connect to 8.8.8.8#53: %s",
+       strerror(errno));
+   }
+diff --git a/tests/api/pool.c b/tests/api/pool.c
+index 8008f1c..d2f4c0d 100644
+--- a/tests/api/pool.c
++++ b/tests/api/pool.c
+@@ -52,12 +52,17 @@ START_TEST (pool_destroy_pool_test) {
+   p = make_sub_pool(permanent_pool);
+   destroy_pool(p);
+ 
+-#if !defined(PR_USE_DEVEL)
+   /* What happens if we destroy an already-destroyed pool?  Answer: IFF
+    * --enable-devel was used, THEN destroying an already-destroyed pool
+    * will result in an exit(2) call from within pool.c, via the
+    * chk_on_blk_list() function.  How impolite.
++   *
++   * And if --enable-devel was NOT used, on SOME systems, this test tickles
++   * other libc/malloc/free behaviors, which are unsettling.
++   *
++   * Sigh.  So for now, I'll just leave this here, but commented out.
+    */
++#if 0
+   mark_point();
+   destroy_pool(p);
+ #endif
