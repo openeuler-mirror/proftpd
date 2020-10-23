@@ -10,6 +10,7 @@
 %undefine _strict_symbol_defs_build
 %global rpmrel 20
 %global mod_vroot_version 0.9.5
+%bcond_with enable_test 0
 
 Name:			proftpd
 Version:		1.3.6
@@ -198,12 +199,6 @@ sed -i -e '/killall/s/test.*/systemctl reload proftpd.service/' \
 chmod -c -x contrib/xferstats.holger-preiss
 chmod -c -x include/hanson-tpl.h lib/hanson-tpl.c
 find doc/ contrib/ -name '*.orig' -delete
-sed -i '867,877d' tests/api/netaddr.c
-sed -i '408,413d' tests/api/netaddr.c
-sed -i '755,760d' tests/api/netacl.c
-sed -i '766,771d' tests/api/netacl.c
-sed -i '786,791d' tests/api/netacl.c
-sed -i '797,802d' tests/api/netacl.c
 
 %build
 SMOD1=mod_sql:mod_sql_passwd:mod_sql_mysql:mod_sql_postgres:mod_sql_sqlite
@@ -267,6 +262,7 @@ install -p -m 644 contrib/dist/rpm/proftpd-tmpfs.conf \
 %endif
 %find_lang proftpd
 
+%if %{with enable_test}
 %check
 %if 0%{?_with_integrationtests:1}
 ln ftpdctl tests/
@@ -279,6 +275,7 @@ if ! make -C tests api-tests; then
 	# Fail the build
 	false
 fi
+%endif
 %endif
 
 %post
