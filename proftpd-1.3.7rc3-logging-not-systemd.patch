@@ -1,0 +1,12 @@
+--- proftpd.conf
++++ proftpd.conf
+@@ -114,9 +114,6 @@ UseSendfile			off
+ LogFormat			default	"%h %l %u %t \"%r\" %s %b"
+ LogFormat			auth	"%v [%P] %h %t \"%r\" %s"
+ 
+-# Don't log hostname or timestamps because systemd will do that for us
+-LogOptions			-Timestamp -Hostname +RoleBasedProcessLabels
+-
+ # Enable basic controls via ftpdctl
+ # (http://www.proftpd.org/docs/modules/mod_ctrls.html)
+ ControlsEngine			on
