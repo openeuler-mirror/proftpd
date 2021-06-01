@@ -1,0 +1,24 @@
+From ca74554f6f30ffea6842f375204736fd6bde78f4 Mon Sep 17 00:00:00 2001
+From: TJ Saunders <tj@castaglia.org>
+Date: Sat, 20 Mar 2021 09:53:11 -0700
+Subject: [PATCH] Issue #1201: Adjusting unit test timeouts for the GitHub
+ Actions environment.
+
+---
+ tests/api/netaddr.c | 3 +++
+ 1 files changed, 3 insertions(+)
+
+diff --git a/tests/api/netaddr.c b/tests/api/netaddr.c
+index 6144c70695..60dbb29319 100644
+--- a/tests/api/netaddr.c
++++ b/tests/api/netaddr.c
+@@ -1464,6 +1464,9 @@ Suite *tests_get_netaddr_suite(void) {
+   tcase_add_test(testcase, netaddr_disable_ipv6_test);
+   tcase_add_test(testcase, netaddr_enable_ipv6_test);
+ 
++  /* Some of the DNS-related tests may take a little longer. */
++  tcase_set_timeout(testcase, 60);
++
+   suite_add_tcase(suite, testcase);
+   return suite;
+ }
