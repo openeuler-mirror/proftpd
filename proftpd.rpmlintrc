@@ -1,0 +1,55 @@
+from Config import *
+
+# Technical terms spelled correctly
+addFilter("spelling-error %description -l en_US customizable -> ")
+addFilter("spelling-error %description -l en_US passwd -> ")
+addFilter("spelling-error %description -l en_US systemd -> ")
+addFilter("spelling-error %description -l en_US virtualhost -> ")
+addFilter("spelling-error %description -l en_US xinetd -> ")
+
+# Proftpd allows specification of ciphers; mod_tls.conf specifies system default
+addFilter("crypto-policy-non-compliance-openssl /usr/sbin/proftpd SSL_CTX_set_cipher_list")
+
+# All FTP daemons provide this
+addFilter("unversioned-explicit-provides ftpserver")
+
+# This is the correct place for tmpfiles snippets
+addFilter("hardcoded-library-path in %{_prefix}/lib/tmpfiles.d")
+addFilter("only-non-binary-in-usr-lib")
+
+# These modes are intentional
+addFilter("non-readable /etc/proftpd.conf 640")
+addFilter("non-readable /etc/proftpd/anonftp.conf 640")
+addFilter("non-readable /etc/proftpd/mod_ban.conf 640")
+addFilter("non-readable /etc/proftpd/mod_qos.conf 640")
+addFilter("non-readable /etc/proftpd/mod_tls.conf 640")
+addFilter("non-readable /etc/proftpd/modules.conf 640")
+addFilter("non-standard-dir-perm /var/ftp/uploads 331")
+addFilter("non-standard-dir-perm /var/log/proftpd 750")
+
+# /var/run/proftpd maintained by tmpfiles snippet too
+# Owning the directories in the package allows the daemon to run immediately after install, with no reboot
+addFilter("dir-or-file-in-var-run /var/run/proftpd")
+addFilter("non-ghost-in-run /run/proftpd")
+
+# File should exist but have no default content
+addFilter("zero-length /etc/ftpusers")
+
+# Same manpage as proftpd
+addFilter("no-manual-page-for-binary in.proftpd")
+
+# This is normal for libtool projects
+addFilter("hidden-file-or-dir /usr/src/debug/proftpd-.*/\.libs")
+
+# Upstream does not provide documentation for devel tools/API yet
+addFilter("no-documentation")
+addFilter("no-manual-page-for-binary prxs")
+
+# https://github.com/proftpd/proftpd/pull/493
+# https://github.com/proftpd/proftpd/commit/75ed08ffe309b75b78dfcdeb4164d88ced4b0888
+# These should be fixed in 1.3.7
+addFilter("incorrect-fsf-address /usr/src/debug/proftpd-.*/modules/mod_geoip.c")
+addFilter("incorrect-fsf-address /usr/include/proftpd/ident.h")
+addFilter("incorrect-fsf-address /usr/include/proftpd/utf8.h")
+addFilter("incorrect-fsf-address /usr/include/proftpd/lastlog.h")
+

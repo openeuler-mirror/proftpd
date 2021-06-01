@@ -1,0 +1,14 @@
+--- modules.conf
++++ modules.conf
+@@ -135,11 +135,6 @@ LoadModule mod_ctrls_admin.c
+ #   LoadModule mod_tls_shmcache.c
+ #
+ # Use the /etc/hosts.allow and /etc/hosts.deny files, or other allow/deny
+-# files, for IP-based access control
+-# (http://www.proftpd.org/docs/contrib/mod_wrap.html)
+-#   LoadModule mod_wrap.c
+-#
+-# Use the /etc/hosts.allow and /etc/hosts.deny files, or other allow/deny
+ # files, as well as SQL-based access rules, for IP-based access control
+ # (http://www.proftpd.org/docs/contrib/mod_wrap2.html)
+ #   LoadModule mod_wrap2.c

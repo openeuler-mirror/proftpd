@@ -1,0 +1,14 @@
+--- modules.conf
++++ modules.conf
+@@ -82,11 +82,6 @@ LoadModule mod_ctrls_admin.c
+ # (http://www.proftpd.org/docs/modules/mod_facl.html)
+ #   LoadModule mod_facl.c
+ #
+-# Support for using the GeoIP library to look up geographical information on
+-# the connecting client and using that to set access controls for the server
+-# (http://www.castaglia.org/proftpd/modules/mod_geoip.html)
+-#   LoadModule mod_geoip.c
+-#
+ # Allow for version-specific configuration sections of the proftpd config file,
+ # useful for using the same proftpd config across multiple servers where
+ # different proftpd versions may be in use
