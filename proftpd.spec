@@ -20,7 +20,7 @@
 
 Name:			proftpd
 Version:		1.3.7a
-Release:		1
+Release:		2
 Summary:		Flexible, stable and highly-configurable FTP server
 License:		GPLv2+
 URL:			http://www.proftpd.org/
@@ -67,6 +67,7 @@ BuildRequires:		sed
 BuildRequires:		sqlite-devel
 BuildRequires:		tar
 BuildRequires:		zlib-devel
+BuildRequires:		chrpath
 
 # Test suite requirements
 BuildRequires:		check-devel
@@ -318,6 +319,11 @@ install -p -m 644 contrib/dist/rpm/proftpd-tmpfs.conf \
 					%{buildroot}%{_prefix}/lib/tmpfiles.d/proftpd.conf
 %endif
 
+chrpath -d %{buildroot}%{_sbindir}/proftpd
+
+mkdir -p %{buildroot}/etc/ld.so.conf.d
+echo "%{_libdir}" > %{buildroot}/etc/ld.so.conf.d/%{name}-%{_arch}.conf
+
 # Find translations
 %find_lang proftpd
 
@@ -357,6 +363,7 @@ if [ $1 -eq 1 ]; then
 		fi
 	done
 fi
+/sbin/ldconfig
 
 %preun
 if [ $1 -eq 0 ]; then
@@ -387,6 +394,7 @@ else
 	service xinetd reload &>/dev/null || :
 %endif
 fi
+/sbin/ldconfig
 
 %files -f proftpd.lang
 %if 0%{?_licensedir:1}
@@ -416,6 +424,7 @@ fi
 %config(noreplace) %{_sysconfdir}/proftpd/mod_qos.conf
 %config(noreplace) %{_sysconfdir}/proftpd/mod_tls.conf
 %config(noreplace) %{_sysconfdir}/sysconfig/proftpd
+%config(noreplace) /etc/ld.so.conf.d/*
 %if %{use_systemd}
 %{_unitdir}/proftpd.service
 %{_unitdir}/proftpd.socket
@@ -508,6 +517,12 @@ fi
 %{_mandir}/man1/ftpwho.1*
 
 %changelog
+* Tue Sep 07 2021 gaihuiying <gaihuiying1@huawei.com> - 1.3.7a-2
+- Type:requirement
+- ID:NA
+- SUG:NA
+- DESC:remove rpath of proftpd
+
 * Tue Jun 1 2021 gaihuiying <gaihuiying1@huawei.com> - 1.3.7a-1
 - Update to 1.3.7a
 
