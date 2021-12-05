@@ -16,11 +16,11 @@
 # Dynamic modules contain references to symbols in main dæmon, so we need to disable linker checks for undefined symbols
 %undefine _strict_symbol_defs_build
 
-%global mod_vroot_version 0.9.5
+%global mod_vroot_version 0.9.9
 
 Name:			proftpd
-Version:		1.3.7a
-Release:		2
+Version:		1.3.7c
+Release:		1
 Summary:		Flexible, stable and highly-configurable FTP server
 License:		GPLv2+
 URL:			http://www.proftpd.org/
@@ -42,11 +42,7 @@ Patch3:			proftpd-1.3.4rc1-mod_vroot-test.patch
 Patch4:			proftpd-1.3.6-no-mod-wrap.patch
 Patch5:			proftpd-1.3.6-no-mod-geoip.patch
 Patch6:			proftpd-1.3.7rc3-logging-not-systemd.patch
-Patch7:			proftpd-1.3.7a-check-api.patch
-Patch8:			proftpd-1.3.7a-netaddr-test.patch
-Patch9:                 proftpd-1.3.7a-fix-environment-sensitive-tests-failure.patch
-Patch10:                proftpd-1.3.7a-Adjusting-unit-test-timeouts-for-netaddr.patch
-Patch11:                proftpd-1.3.7a-Adjusting-unit-test-timeouts-for-netacl.patch
+Patch7:                 proftpd-1.3.7a-Adjusting-unit-test-timeouts-for-netacl.patch
 
 BuildRequires:		coreutils
 BuildRequires:		gcc
@@ -60,6 +56,7 @@ BuildRequires:		openldap-devel
 BuildRequires:		openssl-devel
 BuildRequires:		pam-devel
 BuildRequires:		pcre-devel >= 7.0
+BuildRequires:		perl-generators
 BuildRequires:		perl-interpreter
 BuildRequires:		pkgconfig
 BuildRequires:		postgresql-devel
@@ -176,6 +173,9 @@ Summary:	ProFTPD - Additional utilities
 Requires:	%{name} = %{version}-%{release}
 Requires:	perl-interpreter
 
+BuildRequires:	perl(Crypt::Cracklib)
+Requires:	perl(Crypt::Cracklib)
+
 %description utils
 This package contains additional utilities for monitoring and configuring the
 ProFTPD server:
@@ -233,16 +233,8 @@ sed -i -e '/killall/s/test.*/systemctl reload proftpd.service/' \
 %patch6
 %endif
 
-# Handle changed API in check 0.15
-# https://bugzilla.redhat.com/show_bug.cgi?id=1850198
-%patch7
+%patch7 -p1
 
-# getaddrinfo() can return EAGAIN in netaddr api test
-# https://github.com/proftpd/proftpd/pull/1075
-%patch8
-%patch9 -p1
-%patch10 -p1
-%patch11 -p1
 # Avoid docfile dependencies
 chmod -c -x contrib/xferstats.holger-preiss
 
@@ -260,6 +252,7 @@ SMOD3=mod_ldap:mod_ban:mod_ctrls_admin:mod_facl:mod_load:mod_vroot
 SMOD4=mod_radius:mod_ratio:mod_rewrite:mod_site_misc:mod_exec:mod_shaper
 SMOD5=mod_wrap2:mod_wrap2_file:mod_wrap2_sql:mod_copy:mod_deflate:mod_ifversion:mod_qos
 SMOD6=mod_sftp:mod_sftp_pam:mod_sftp_sql:mod_tls_shmcache
+SMOD7=mod_unique_id
 
 %configure \
 			--libexecdir="%{_libexecdir}/proftpd" \
@@ -278,7 +271,7 @@ SMOD6=mod_sftp:mod_sftp_pam:mod_sftp_sql:mod_tls_shmcache
 			--with-libraries="%{_libdir}/%{mysql_lib}" \
 			--with-includes="%{_includedir}/mysql" \
 			--with-modules=mod_readme:mod_auth_pam:mod_tls \
-			--with-shared=${SMOD1}:${SMOD2}:${SMOD3}:${SMOD4}:${SMOD5}:${SMOD6}:mod_ifsession
+			--with-shared=${SMOD1}:${SMOD2}:${SMOD3}:${SMOD4}:${SMOD5}:${SMOD6}:${SMOD7}:mod_ifsession
 %make_build
 
 %install
@@ -333,7 +326,7 @@ echo "%{_libdir}" > %{buildroot}/etc/ld.so.conf.d/%{name}-%{_arch}.conf
 ln ftpdctl tests/
 make check
 %else
-# API tests should always be OK
+#API tests should always be OK
 export HOSTNAME=`cat /etc/hosts | grep 127.0.0.1 | head -1| awk '{print $2}'`
 if ! make -C tests api-tests; then
 	# Diagnostics to report upstream
@@ -456,6 +449,7 @@ fi
 %{_libexecdir}/proftpd/mod_facl.so
 %{_libexecdir}/proftpd/mod_ifsession.so
 %{_libexecdir}/proftpd/mod_ifversion.so
+%{_libexecdir}/proftpd/mod_unique_id.so
 %{_libexecdir}/proftpd/mod_load.so
 %{_libexecdir}/proftpd/mod_qos.so
 %{_libexecdir}/proftpd/mod_quotatab.so
@@ -517,6 +511,12 @@ fi
 %{_mandir}/man1/ftpwho.1*
 
 %changelog
+* Sat Dec 04 2021 quanhongfei <quanhongfei@huawei.com> - 1.3.7c-1
+- Type:requirement
+- ID:NA
+- SUG:NA
+- DESC:update proftpd to 1.3.7c
+
 * Tue Sep 07 2021 gaihuiying <gaihuiying1@huawei.com> - 1.3.7a-2
 - Type:requirement
 - ID:NA
