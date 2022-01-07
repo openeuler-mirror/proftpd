@@ -20,7 +20,7 @@
 
 Name:			proftpd
 Version:		1.3.7c
-Release:		1
+Release:		2
 Summary:		Flexible, stable and highly-configurable FTP server
 License:		GPLv2+
 URL:			http://www.proftpd.org/
@@ -42,7 +42,8 @@ Patch3:			proftpd-1.3.4rc1-mod_vroot-test.patch
 Patch4:			proftpd-1.3.6-no-mod-wrap.patch
 Patch5:			proftpd-1.3.6-no-mod-geoip.patch
 Patch6:			proftpd-1.3.7rc3-logging-not-systemd.patch
-Patch7:                 proftpd-1.3.7a-Adjusting-unit-test-timeouts-for-netacl.patch
+Patch7: 		proftpd-1.3.7a-Adjusting-unit-test-timeouts-for-netacl.patch
+Patch8: 		proftpd-1.3.7a-fix-environment-sensitive-tests-failure.patch
 
 BuildRequires:		coreutils
 BuildRequires:		gcc
@@ -234,6 +235,7 @@ sed -i -e '/killall/s/test.*/systemctl reload proftpd.service/' \
 %endif
 
 %patch7 -p1
+%patch8 -p1
 
 # Avoid docfile dependencies
 chmod -c -x contrib/xferstats.holger-preiss
@@ -511,6 +513,12 @@ fi
 %{_mandir}/man1/ftpwho.1*
 
 %changelog
+* Fri Jan 07 2022 gaihuiying <gaihuiying1@huawei.com> - 1.3.7c-2
+- Type:bugfix
+- ID:NA
+- SUG:NA
+- DESC:fix environment sensitive tests failure
+
 * Sat Dec 04 2021 quanhongfei <quanhongfei@huawei.com> - 1.3.7c-1
 - Type:requirement
 - ID:NA
