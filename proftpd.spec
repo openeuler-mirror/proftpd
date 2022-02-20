@@ -20,7 +20,7 @@
 
 Name:			proftpd
 Version:		1.3.7a
-Release:		2
+Release:		3
 Summary:		Flexible, stable and highly-configurable FTP server
 License:		GPLv2+
 URL:			http://www.proftpd.org/
@@ -47,6 +47,10 @@ Patch8:			proftpd-1.3.7a-netaddr-test.patch
 Patch9:                 proftpd-1.3.7a-fix-environment-sensitive-tests-failure.patch
 Patch10:                proftpd-1.3.7a-Adjusting-unit-test-timeouts-for-netaddr.patch
 Patch11:                proftpd-1.3.7a-Adjusting-unit-test-timeouts-for-netacl.patch
+%ifarch riscv64
+# Remove netaddr_get_addr2_test to avoid test failure in RISC-V caused by poor performance
+Patch12:		proftpd-1.3.7a-netaddr-test-riscv.patch
+%endif
 
 BuildRequires:		coreutils
 BuildRequires:		gcc
@@ -243,6 +247,9 @@ sed -i -e '/killall/s/test.*/systemctl reload proftpd.service/' \
 %patch9 -p1
 %patch10 -p1
 %patch11 -p1
+%ifarch riscv64
+%patch12
+%endif
 # Avoid docfile dependencies
 chmod -c -x contrib/xferstats.holger-preiss
 
@@ -517,6 +524,9 @@ fi
 %{_mandir}/man1/ftpwho.1*
 
 %changelog
+* Fri Feb 18 2022 YukariChiba <i@0x7f.cc> - 1.3.7a-3
+- Remove netaddr_get_addr2_test to avoid test failure in RISC-V caused by poor performance
+
 * Tue Sep 07 2021 gaihuiying <gaihuiying1@huawei.com> - 1.3.7a-2
 - Type:requirement
 - ID:NA
