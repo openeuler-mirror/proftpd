@@ -20,7 +20,7 @@
 
 Name:			proftpd
 Version:		1.3.7c
-Release:		2
+Release:		3
 Summary:		Flexible, stable and highly-configurable FTP server
 License:		GPLv2+
 URL:			http://www.proftpd.org/
@@ -60,7 +60,9 @@ BuildRequires:		pcre-devel >= 7.0
 BuildRequires:		perl-generators
 BuildRequires:		perl-interpreter
 BuildRequires:		pkgconfig
+%if %{?openEuler:1}0
 BuildRequires:		postgresql-devel
+%endif
 BuildRequires:		sed
 BuildRequires:		sqlite-devel
 BuildRequires:		tar
@@ -134,7 +136,9 @@ Requires:	openssl-devel
 Requires:	pam-devel
 Requires:	pcre-devel
 Requires:	pkgconfig
+%if %{?openEuler:1}0
 Requires:	postgresql-devel
+%endif
 Requires:	sqlite-devel
 Requires:	zlib-devel
 
@@ -155,12 +159,14 @@ Requires:	%{name} = %{version}-%{release}
 %description mysql
 Module to add MySQL support to the ProFTPD FTP server.
 
+%if %{?openEuler:1}0
 %package postgresql
 Summary:	Module to add PostgreSQL support to the ProFTPD FTP server
 Requires:	%{name} = %{version}-%{release}
 
 %description postgresql
 Module to add PostgreSQL support to the ProFTPD FTP server.
+%endif
 
 %package sqlite
 Summary:	Module to add SQLite support to the ProFTPD FTP server
@@ -248,7 +254,11 @@ find doc/ contrib/ -name '*.orig' -delete
 
 %build
 # Modules to be built as DSO's (excluding mod_ifsession, always specified last)
+%if %{?openEuler:1}0
 SMOD1=mod_sql:mod_sql_passwd:mod_sql_mysql:mod_sql_postgres:mod_sql_sqlite
+%else
+SMOD1=mod_sql:mod_sql_passwd:mod_sql_mysql:mod_sql_sqlite
+%endif
 SMOD2=mod_quotatab:mod_quotatab_file:mod_quotatab_ldap:mod_quotatab_radius:mod_quotatab_sql
 SMOD3=mod_ldap:mod_ban:mod_ctrls_admin:mod_facl:mod_load:mod_vroot
 SMOD4=mod_radius:mod_ratio:mod_rewrite:mod_site_misc:mod_exec:mod_shaper
@@ -491,8 +501,10 @@ fi
 %files mysql
 %{_libexecdir}/proftpd/mod_sql_mysql.so
 
+%if %{?openEuler:1}0
 %files postgresql
 %{_libexecdir}/proftpd/mod_sql_postgres.so
+%endif
 
 %files sqlite
 %{_libexecdir}/proftpd/mod_sql_sqlite.so
@@ -513,6 +525,12 @@ fi
 %{_mandir}/man1/ftpwho.1*
 
 %changelog
+* Thu Mar 17 2022 gaihuiying <eaglegai@163.com> - 1.3.7c-3
+- Type:bugfix
+- ID:NA
+- SUG:NA
+- DESC:add macro to control if postgresql is need
+
 * Fri Jan 07 2022 gaihuiying <gaihuiying1@huawei.com> - 1.3.7c-2
 - Type:bugfix
 - ID:NA
