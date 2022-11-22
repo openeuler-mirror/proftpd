@@ -13,14 +13,16 @@
 # Do a hardened build where possible
 %global _hardened_build 1
 
-# Dynamic modules contain references to symbols in main dæmon, so we need to disable linker checks for undefined symbols
+# Dynamic modules contain references to symbols in main daemon, so we need to disable linker checks for undefined symbols
 %undefine _strict_symbol_defs_build
 
 %global mod_vroot_version 0.9.9
 
+%global vendor %{?_vendor:%{_vendor}}%{!?_vendor:openEuler}
+
 Name:			proftpd
 Version:		1.3.7c
-Release:		3
+Release:		4
 Summary:		Flexible, stable and highly-configurable FTP server
 License:		GPLv2+
 URL:			http://www.proftpd.org/
@@ -60,7 +62,7 @@ BuildRequires:		pcre-devel >= 7.0
 BuildRequires:		perl-generators
 BuildRequires:		perl-interpreter
 BuildRequires:		pkgconfig
-%if %{?openEuler:1}0
+%if %{?vendor:1}0
 BuildRequires:		postgresql-devel
 %endif
 BuildRequires:		sed
@@ -136,7 +138,7 @@ Requires:	openssl-devel
 Requires:	pam-devel
 Requires:	pcre-devel
 Requires:	pkgconfig
-%if %{?openEuler:1}0
+%if %{?vendor:1}0
 Requires:	postgresql-devel
 %endif
 Requires:	sqlite-devel
@@ -159,7 +161,7 @@ Requires:	%{name} = %{version}-%{release}
 %description mysql
 Module to add MySQL support to the ProFTPD FTP server.
 
-%if %{?openEuler:1}0
+%if %{?vendor:1}0
 %package postgresql
 Summary:	Module to add PostgreSQL support to the ProFTPD FTP server
 Requires:	%{name} = %{version}-%{release}
@@ -254,7 +256,7 @@ find doc/ contrib/ -name '*.orig' -delete
 
 %build
 # Modules to be built as DSO's (excluding mod_ifsession, always specified last)
-%if %{?openEuler:1}0
+%if %{?vendor:1}0
 SMOD1=mod_sql:mod_sql_passwd:mod_sql_mysql:mod_sql_postgres:mod_sql_sqlite
 %else
 SMOD1=mod_sql:mod_sql_passwd:mod_sql_mysql:mod_sql_sqlite
@@ -501,7 +503,7 @@ fi
 %files mysql
 %{_libexecdir}/proftpd/mod_sql_mysql.so
 
-%if %{?openEuler:1}0
+%if %{?vendor:1}0
 %files postgresql
 %{_libexecdir}/proftpd/mod_sql_postgres.so
 %endif
@@ -525,6 +527,9 @@ fi
 %{_mandir}/man1/ftpwho.1*
 
 %changelog
+* Fri Nov 18 2022 caodongxia <caodongxia@h-partners.com> - 1.3.7c-4
+- Replace openEuler with vendor macro
+
 * Thu Mar 17 2022 gaihuiying <eaglegai@163.com> - 1.3.7c-3
 - Type:bugfix
 - ID:NA
