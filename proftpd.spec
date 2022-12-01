@@ -20,7 +20,7 @@
 
 Name:			proftpd
 Version:		1.3.7a
-Release:		1
+Release:		2
 Summary:		Flexible, stable and highly-configurable FTP server
 License:		GPLv2+
 URL:			http://www.proftpd.org/
@@ -45,6 +45,7 @@ Patch6:			proftpd-1.3.7rc3-logging-not-systemd.patch
 Patch7:			proftpd-1.3.7a-check-api.patch
 Patch8:			proftpd-1.3.7a-netaddr-test.patch
 Patch9:                 proftpd-1.3.7a-fix-environment-sensitive-tests-failure.patch
+Patch10:                CVE-2021-46854.patch
 
 BuildRequires:		coreutils
 BuildRequires:		gcc
@@ -238,6 +239,7 @@ sed -i -e '/killall/s/test.*/systemctl reload proftpd.service/' \
 # https://github.com/proftpd/proftpd/pull/1075
 %patch8
 %patch9 -p1
+%patch10 -p1
 
 # Avoid docfile dependencies
 chmod -c -x contrib/xferstats.holger-preiss
@@ -505,6 +507,9 @@ fi
 %{_mandir}/man1/ftpwho.1*
 
 %changelog
+* Thu Dec 01 2022 jiangpeng <jiangpeng01@ncti-gba.cn> - 1.3.7a-2
+- Fix CVE-2021-46854
+
 * Fri Jan 15 2021 gaihuiying <gaihuiying1@huawei.com> - 1.3.7a-1
 - Update to 1.3.7a
 
