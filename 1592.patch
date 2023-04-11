@@ -1,0 +1,139 @@
+From c2c1232255d35ca641709a7dfbd3b70a6cb155bf Mon Sep 17 00:00:00 2001
+From: TJ Saunders <tj@castaglia.org>
+Date: Fri, 3 Feb 2023 11:04:24 -0800
+Subject: [PATCH] Issue #1590: When we properly detect (via linking) the
+ `libidn2` library, make sure that the proper linker flags are set, especially
+ for linking dynamic modules.
+
+---
+ configure    | 20 ++++++++++++++++----
+ configure.in | 14 ++++++++++++--
+ 2 files changed, 28 insertions(+), 6 deletions(-)
+
+diff --git a/configure b/configure
+index 8db039b50..03d973203 100755
+--- a/configure
++++ b/configure
+@@ -21447,6 +21447,8 @@ rm -f core conftest.err conftest.$ac_objext \
+ 
+ { $as_echo "$as_me:${as_lineno-$LINENO}: checking for idn2_to_ascii_8z" >&5
+ $as_echo_n "checking for idn2_to_ascii_8z... " >&6; }
++old_libs=$LIBS
++LIBS="-lidn2 $LIBS"
+ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+ /* end confdefs.h.  */
+ 
+@@ -21468,7 +21470,7 @@ main ()
+   return 0;
+ }
+ _ACEOF
+-if ac_fn_c_try_compile "$LINENO"; then :
++if ac_fn_c_try_link "$LINENO"; then :
+ 
+     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+ $as_echo "yes" >&6; }
+@@ -21476,18 +21478,24 @@ $as_echo "yes" >&6; }
+ $as_echo "#define HAVE_IDN2_TO_ASCII_8Z 1" >>confdefs.h
+ 
+     MAIN_LIBS="$MAIN_LIBS -lidn2"
++    ac_orig_libs="$ac_orig_libs -lidn2"
++    SHARED_MODULE_LIBS="$SHARED_MODULE_LIBS -lidn2"
+ 
+ else
+ 
+     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+ $as_echo "no" >&6; }
++    LIBS=$old_libs
+ 
+ 
+ fi
+-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
++rm -f core conftest.err conftest.$ac_objext \
++    conftest$ac_exeext conftest.$ac_ext
+ 
+ { $as_echo "$as_me:${as_lineno-$LINENO}: checking for idna_to_ascii_8z" >&5
+ $as_echo_n "checking for idna_to_ascii_8z... " >&6; }
++old_libs=$LIBS
++LIBS="-lidn $LIBS"
+ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+ /* end confdefs.h.  */
+ 
+@@ -21509,7 +21517,7 @@ main ()
+   return 0;
+ }
+ _ACEOF
+-if ac_fn_c_try_compile "$LINENO"; then :
++if ac_fn_c_try_link "$LINENO"; then :
+ 
+     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+ $as_echo "yes" >&6; }
+@@ -21517,15 +21525,19 @@ $as_echo "yes" >&6; }
+ $as_echo "#define HAVE_IDNA_TO_ASCII_8Z 1" >>confdefs.h
+ 
+     MAIN_LIBS="$MAIN_LIBS -lidn"
++    ac_orig_libs="$ac_orig_libs -lidn"
++    SHARED_MODULE_LIBS="$SHARED_MODULE_LIBS -lidn"
+ 
+ else
+ 
+     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+ $as_echo "no" >&6; }
++    LIBS=$old_libs
+ 
+ 
+ fi
+-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
++rm -f core conftest.err conftest.$ac_objext \
++    conftest$ac_exeext conftest.$ac_ext
+ 
+ { $as_echo "$as_me:${as_lineno-$LINENO}: checking for dirfd" >&5
+ $as_echo_n "checking for dirfd... " >&6; }
+diff --git a/configure.in b/configure.in
+index cd753c1f2..12a534451 100644
+--- a/configure.in
++++ b/configure.in
+@@ -2058,7 +2058,9 @@ AC_TRY_LINK(
+ )
+ 
+ AC_MSG_CHECKING([for idn2_to_ascii_8z])
+-AC_TRY_COMPILE(
++old_libs=$LIBS
++LIBS="-lidn2 $LIBS"
++AC_TRY_LINK(
+   [
+     #include <sys/types.h>
+     #ifdef HAVE_IDN2_H
+@@ -2075,14 +2077,19 @@ AC_TRY_COMPILE(
+     AC_MSG_RESULT(yes)
+     AC_DEFINE(HAVE_IDN2_TO_ASCII_8Z, 1, [Define if you have idn2_to_ascii_8z])
+     MAIN_LIBS="$MAIN_LIBS -lidn2"
++    ac_orig_libs="$ac_orig_libs -lidn2"
++    SHARED_MODULE_LIBS="$SHARED_MODULE_LIBS -lidn2"
+   ],
+   [
+     AC_MSG_RESULT(no)
++    LIBS=$old_libs
+   ]
+ )
+ 
+ AC_MSG_CHECKING([for idna_to_ascii_8z])
+-AC_TRY_COMPILE(
++old_libs=$LIBS
++LIBS="-lidn $LIBS"
++AC_TRY_LINK(
+   [
+     #include <sys/types.h>
+     #ifdef HAVE_IDNA_H
+@@ -2099,9 +2106,12 @@ AC_TRY_COMPILE(
+     AC_MSG_RESULT(yes)
+     AC_DEFINE(HAVE_IDNA_TO_ASCII_8Z, 1, [Define if you have idna_to_ascii_8z])
+     MAIN_LIBS="$MAIN_LIBS -lidn"
++    ac_orig_libs="$ac_orig_libs -lidn"
++    SHARED_MODULE_LIBS="$SHARED_MODULE_LIBS -lidn"
+   ],
+   [
+     AC_MSG_RESULT(no)
++    LIBS=$old_libs
+   ]
+ )
+ 
