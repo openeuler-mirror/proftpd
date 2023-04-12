@@ -16,13 +16,13 @@
 # Dynamic modules contain references to symbols in main daemon, so we need to disable linker checks for undefined symbols
 %undefine _strict_symbol_defs_build
 
-%global mod_vroot_version 0.9.9
+%global mod_vroot_version 0.9.11
 
 %global vendor %{?_vendor:%{_vendor}}%{!?_vendor:openEuler}
 
 Name:			proftpd
-Version:		1.3.7c
-Release:		4
+Version:		1.3.8
+Release:		1
 Summary:		Flexible, stable and highly-configurable FTP server
 License:		GPLv2+
 URL:			http://www.proftpd.org/
@@ -38,14 +38,14 @@ Source8:		proftpd-welcome.msg
 Source9:		proftpd.sysconfig
 Source10:		http://github.com/Castaglia/proftpd-mod_vroot/archive/v%{mod_vroot_version}.tar.gz
 
-Patch1:			proftpd-1.3.7-shellbang.patch
+Patch1:			proftpd-1.3.8-shellbang.patch
 Patch2:			proftpd.conf-no-memcached.patch
 Patch3:			proftpd-1.3.4rc1-mod_vroot-test.patch
 Patch4:			proftpd-1.3.6-no-mod-wrap.patch
 Patch5:			proftpd-1.3.6-no-mod-geoip.patch
 Patch6:			proftpd-1.3.7rc3-logging-not-systemd.patch
-Patch7: 		proftpd-1.3.7a-Adjusting-unit-test-timeouts-for-netacl.patch
-Patch8: 		proftpd-1.3.7a-fix-environment-sensitive-tests-failure.patch
+Patch8:			proftpd-1.3.8-fix-environment-sensitive-tests-failure.patch
+Patch9:			1592.patch
 
 BuildRequires:		coreutils
 BuildRequires:		gcc
@@ -70,6 +70,10 @@ BuildRequires:		sqlite-devel
 BuildRequires:		tar
 BuildRequires:		zlib-devel
 BuildRequires:		chrpath
+BuildRequires:		libidn2-devel
+BuildRequires:		libmemcached-devel >= 0.41
+BuildRequires:		pcre2-devel >= 10.30
+BuildRequires:		tcp_wrappers-devel
 
 # Test suite requirements
 BuildRequires:		check-devel
@@ -143,6 +147,10 @@ Requires:	postgresql-devel
 %endif
 Requires:	sqlite-devel
 Requires:	zlib-devel
+Requires:	libmemcached-devel >= 0.41
+Requires:	pcre2-devel >= 10.30
+Requires:	tcp_wrappers-devel
+
 
 %description devel
 This package is required to build additional modules for ProFTPD.
@@ -242,8 +250,9 @@ sed -i -e '/killall/s/test.*/systemctl reload proftpd.service/' \
 %patch6
 %endif
 
-%patch7 -p1
 %patch8 -p1
+
+%patch9 -p1 -b .libidn2
 
 # Avoid docfile dependencies
 chmod -c -x contrib/xferstats.holger-preiss
@@ -272,6 +281,8 @@ SMOD7=mod_unique_id
 			--libexecdir="%{_libexecdir}/proftpd" \
 			--localstatedir="%{rundir}/proftpd" \
 			--disable-strip \
+			--enable-memcache \
+			--enable-pcre2 \
 			--enable-ctrls \
 			--enable-dso \
 			--enable-facl \
@@ -527,6 +538,9 @@ fi
 %{_mandir}/man1/ftpwho.1*
 
 %changelog
+* Tue Apr 11 2023 chenchen <chen_aka_jan@163.com> - 1.3.8-1
+- Update to 1.3.8
+
 * Fri Nov 18 2022 caodongxia <caodongxia@h-partners.com> - 1.3.7c-4
 - Replace openEuler with vendor macro
 
