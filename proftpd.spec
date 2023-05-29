@@ -22,7 +22,7 @@
 
 Name:			proftpd
 Version:		1.3.7c
-Release:		4
+Release:		5
 Summary:		Flexible, stable and highly-configurable FTP server
 License:		GPLv2+
 URL:			http://www.proftpd.org/
@@ -46,6 +46,7 @@ Patch5:			proftpd-1.3.6-no-mod-geoip.patch
 Patch6:			proftpd-1.3.7rc3-logging-not-systemd.patch
 Patch7: 		proftpd-1.3.7a-Adjusting-unit-test-timeouts-for-netacl.patch
 Patch8: 		proftpd-1.3.7a-fix-environment-sensitive-tests-failure.patch
+Patch9: 		fix-clang-test.patch
 
 BuildRequires:		coreutils
 BuildRequires:		gcc
@@ -244,6 +245,9 @@ sed -i -e '/killall/s/test.*/systemctl reload proftpd.service/' \
 
 %patch7 -p1
 %patch8 -p1
+%if "%toolchain" == "clang"
+%patch9 -p1
+%endif
 
 # Avoid docfile dependencies
 chmod -c -x contrib/xferstats.holger-preiss
@@ -527,6 +531,9 @@ fi
 %{_mandir}/man1/ftpwho.1*
 
 %changelog
+* Thu May 25 2023 yoo <sunyuechi@iscas.ac.cn> - 1.3.7c-5
+- fix clang test
+
 * Fri Nov 18 2022 caodongxia <caodongxia@h-partners.com> - 1.3.7c-4
 - Replace openEuler with vendor macro
 
